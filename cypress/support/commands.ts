@@ -9,6 +9,8 @@ export interface TestAccount {
   phone: string
   location: string
   neighborhood: string
+  // Not sent to the API unless explicitly overridden — registerSchema defaults to SELLER.
+  role?: 'SELLER' | 'BUYER'
 }
 
 function randomDigits(len: number): string {
@@ -27,8 +29,8 @@ Cypress.Commands.add('apiRegister', (overrides: Partial<TestAccount> = {}) => {
   const account: TestAccount = {
     email: `cy-${stamp}@example.com`,
     password: 'TesteSenha123',
-    name: 'Cypress Teste',
-    company: `Empresa Cypress ${stamp}`,
+    name: 'Ana Teste E2E',
+    company: `Cypress E2E Materiais ${stamp}`,
     cnpj: randomDigits(14),
     phone: '92991234567',
     location: 'Manaus - AM',
@@ -90,6 +92,17 @@ Cypress.Commands.add('approveListingForTest', (id: number) => {
   cy.exec(`cd ${appServerPath} && npx tsx src/scripts/testApproveListing.ts ${id}`)
 })
 
+// Test-only: promotes an already-registered disposable account to ADMIN by
+// running the app repo's own admin-provisioning script (server/src/scripts/
+// createAdmin.ts) against it. The script upserts by email — since the account
+// already exists, it only flips role/status, leaving the password (and so the
+// existing session cookie's account) intact. The account is still deletable
+// afterwards via DELETE /me/account regardless of role.
+Cypress.Commands.add('promoteToAdmin', (email: string, password: string) => {
+  const appServerPath = Cypress.env('appServerPath') as string
+  cy.exec(`cd ${appServerPath} && npx tsx src/scripts/createAdmin.ts ${email} ${password}`)
+})
+
 // TanStack Start's dev SSR sometimes hits a hydration mismatch right after
 // load, which makes React discard and remount the tree client-side — any
 // input typed during that short window gets silently reset once the remount
@@ -107,6 +120,7 @@ declare global {
       apiDeleteAccount(): Chainable<Cypress.Response<unknown>>
       apiCreateListing(overrides?: Record<string, unknown>): Chainable<{ id: number }>
       approveListingForTest(id: number): Chainable<null>
+      promoteToAdmin(email: string, password: string): Chainable<null>
       visitReady(url: string): Chainable<null>
     }
   }

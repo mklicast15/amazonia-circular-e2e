@@ -1,5 +1,11 @@
 import type { TestAccount } from '../../support/commands'
 
+function attemptLogin(email: string, password: string) {
+  cy.get('#login-email').clear().type(email)
+  cy.get('#login-password').clear().type(password)
+  cy.contains('button', 'Entrar').click()
+}
+
 describe('Login', () => {
   let account: TestAccount
   let savedCookies: Cypress.Cookie[] = []
@@ -28,9 +34,7 @@ describe('Login', () => {
 
   it('TC-LOG-01: autentica com credenciais corretas e leva ao marketplace', () => {
     cy.visitReady('/login')
-    cy.get('#login-email').type(account.email)
-    cy.get('#login-password').type(account.password)
-    cy.contains('button', 'Entrar').click()
+    attemptLogin(account.email, account.password)
 
     cy.location('pathname').should('eq', '/')
     cy.get('.user-menu-trigger-name').should('contain.text', account.name)
@@ -38,9 +42,7 @@ describe('Login', () => {
 
   it('TC-LOG-02: mostra erro e permanece na tela com senha incorreta', () => {
     cy.visitReady('/login')
-    cy.get('#login-email').type(account.email)
-    cy.get('#login-password').type('SenhaErrada999')
-    cy.contains('button', 'Entrar').click()
+    attemptLogin(account.email, 'SenhaErrada999')
 
     cy.contains('.form-error', 'E-mail ou senha incorretos').should('be.visible')
     cy.location('pathname').should('eq', '/login')
@@ -50,15 +52,19 @@ describe('Login', () => {
     cy.visitReady('/login')
     // Attempts 1-5: normal "wrong password" — the 5th is the one that flips the lock.
     for (let i = 0; i < 5; i++) {
-      cy.get('#login-email').clear().type(account.email)
-      cy.get('#login-password').clear().type('SenhaErrada999')
-      cy.contains('button', 'Entrar').click()
+      attemptLogin(account.email, 'SenhaErrada999')
       cy.contains('.form-error', 'E-mail ou senha incorretos').should('be.visible')
     }
     // 6th attempt (even with the correct password) hits the lock, not a password check.
-    cy.get('#login-email').clear().type(account.email)
-    cy.get('#login-password').clear().type(account.password)
-    cy.contains('button', 'Entrar').click()
+    attemptLogin(account.email, account.password)
     cy.contains('.form-error', 'Muitas tentativas de login').should('be.visible')
+  })
+
+  it('TC-LOG-04: bloqueia o envio com campos vazios', () => {
+    cy.visitReady('/login')
+    cy.contains('button', 'Entrar').click()
+
+    cy.location('pathname').should('eq', '/login')
+    cy.get('.user-menu-trigger-name').should('not.exist')
   })
 })
