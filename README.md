@@ -1,11 +1,16 @@
 # Amazônia Circular — E2E (Cypress)
 
-Suíte de testes end-to-end para os fluxos críticos da Amazônia Circular
-(cadastro, login, publicação de anúncio, envio de proposta/negociação).
-Repositório separado do app de propósito, para não misturar automação de
-teste com o código de produção.
+Suíte de testes end-to-end para os fluxos críticos da Amazônia Circular:
+cadastro, login e recuperação de senha, publicação e gestão de anúncios,
+envio de proposta/negociação (incluindo o lado do vendedor no painel),
+conta/perfil/LGPD, e controle de acesso por papel (comprador, vendedor,
+administrador). Repositório separado do app de propósito, para não
+misturar automação de teste com o código de produção.
 
-Ver `cypress/CASOS_DE_TESTE.md` para a lista completa de casos cobertos.
+`cypress/CASOS_DE_TESTE.md` tem a lista completa de casos cobertos —
+esse arquivo está no `.gitignore` (é um catálogo de apoio local, não faz
+parte do histórico do repo), então cada clone/checkout o mantém por conta
+própria conforme os specs evoluem.
 
 ## Pré-requisitos
 
@@ -37,6 +42,18 @@ repo, sem merge em `main`):
    test-only aprova um anúncio diretamente no banco (bypassa a moderação
    real). Usado só pela suíte, via `cy.exec`, para alcançar o fluxo de
    proposta/negociação.
+
+### Testes de papel ADMIN
+
+Não existe cadastro público com papel ADMIN (o `registerSchema` só aceita
+`SELLER`/`BUYER`). Os casos de `cypress/e2e/permissoes/papeis.cy.ts` que
+precisam de uma conta administradora registram uma conta descartável normal
+e a promovem via `cy.exec`, reaproveitando o próprio script de provisionamento
+do app (`server/src/scripts/createAdmin.ts`, comando `promoteToAdmin` em
+`cypress/support/commands.ts`) — esse script já existe independente da branch
+`test/cypress-e2e`. Como ele faz `upsert` por e-mail, promove a conta já
+registrada em vez de criar uma nova, então ela continua descartável
+normalmente (`DELETE /me/account`) ao final do teste.
 
 ### Caminho do repo do app
 
