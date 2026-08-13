@@ -4,8 +4,7 @@ Suíte de testes end-to-end para os fluxos críticos da Amazônia Circular:
 cadastro, login e recuperação de senha, publicação e gestão de anúncios,
 envio de proposta/negociação (incluindo o lado do vendedor no painel),
 conta/perfil/LGPD, e controle de acesso por papel (comprador, vendedor,
-administrador). Repositório separado do app de propósito, para não
-misturar automação de teste com o código de produção.
+administrador).
 
 `cypress/CASOS_DE_TESTE.md` tem a lista completa de casos cobertos —
 esse arquivo está no `.gitignore` (é um catálogo de apoio local, não faz
