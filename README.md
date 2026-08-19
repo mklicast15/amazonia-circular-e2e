@@ -6,11 +6,6 @@ envio de proposta/negociação (incluindo o lado do vendedor no painel),
 conta/perfil/LGPD, e controle de acesso por papel (comprador, vendedor,
 administrador).
 
-`cypress/CASOS_DE_TESTE.md` tem a lista completa de casos cobertos —
-esse arquivo está no `.gitignore` (é um catálogo de apoio local, não faz
-parte do histórico do repo), então cada clone/checkout o mantém por conta
-própria conforme os specs evoluem.
-
 ## Pré-requisitos
 
 Este repositório só testa a aplicação de fora (via browser + chamadas HTTP
