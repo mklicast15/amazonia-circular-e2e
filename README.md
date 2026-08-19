@@ -1,10 +1,30 @@
 # Amazônia Circular — E2E (Cypress)
 
-Suíte de testes end-to-end para os fluxos críticos da Amazônia Circular:
-cadastro, login e recuperação de senha, publicação e gestão de anúncios,
-envio de proposta/negociação (incluindo o lado do vendedor no painel),
-conta/perfil/LGPD, e controle de acesso por papel (comprador, vendedor,
-administrador).
+## Sobre o projeto
+
+A Amazônia Circular é um marketplace que conecta a indústria geradora de
+resíduos plásticos do Polo Industrial de Manaus (PIM) a recicladoras,
+transformadoras e compradores de matéria-prima: o PIM gera um grande volume
+de aparas e retalhos pós-industriais (PET, PEAD, PP, ABS e outros polímeros)
+que muitas vezes vira passivo ambiental por falta de canal de venda — a
+plataforma dá visibilidade a esse material e aproxima quem vende de quem
+compra, mantendo o plástico em circulação na economia.
+
+**Produção:** https://amazoniacircular.com.br
+
+Este repositório contém só a suíte de testes E2E — o código da aplicação
+(frontend/backend) vive em um repositório separado, de propósito, para não
+misturar automação de teste com o código de produção.
+
+## Escopo da suíte
+
+Cobre os fluxos críticos: cadastro, login e recuperação de senha, publicação
+e gestão de anúncios, envio de proposta/negociação (incluindo o lado do
+vendedor no painel), conta/perfil/LGPD, e controle de acesso por papel
+(comprador, vendedor, administrador).
+
+A lista completa de casos, com o resultado esperado de cada um, está em
+[`cypress/CASOS_DE_TESTE.md`](cypress/CASOS_DE_TESTE.md).
 
 ## Pré-requisitos
 
