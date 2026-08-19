@@ -2,8 +2,9 @@ import type { TestAccount } from '../../support/commands'
 
 describe('Conta e perfil', () => {
   let account: TestAccount
-  // Only set when a test itself logs the session out (TC-PERF-03) — cleanup
-  // needs a cookie to call DELETE /me/account with, since logout clears it.
+  // Só é definido quando o próprio teste encerra a sessão (TC-PERF-03) — o
+  // cleanup precisa de um cookie para chamar DELETE /me/account, já que o
+  // logout o limpa.
   let savedCookies: Cypress.Cookie[] = []
 
   beforeEach(() => {
@@ -29,9 +30,9 @@ describe('Conta e perfil', () => {
     cy.contains('.user-menu-dropdown-item', 'Editar perfil').click()
     cy.contains('button', 'Editar informações').click()
 
-    // #um-name strips anything that isn't a letter/space/'/- (onlyLetters), so
-    // the "E2E" tag used elsewhere in test data can't survive here — "Beatriz
-    // Teste" is still clearly synthetic in context (disposable cy- account).
+    // #um-name remove qualquer caractere que não seja letra/espaço/'/- (onlyLetters),
+    // então a tag "E2E" usada em outros dados de teste não sobrevive aqui — "Beatriz
+    // Teste" ainda é claramente sintético no contexto (conta descartável cy-).
     cy.get('#um-name').clear().type('Beatriz Teste')
     cy.get('#um-phone').clear().type('(92) 90000-1111')
     cy.get('#um-bairro').clear().type('Compensa')

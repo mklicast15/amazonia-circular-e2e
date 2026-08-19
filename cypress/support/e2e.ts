@@ -1,9 +1,9 @@
 import './commands'
 
-// TanStack Start's dev SSR occasionally throws a React hydration-mismatch
-// error (real bug: a <style> tag differs between server and client render).
-// Cypress treats it as a fatal uncaught exception; ignore just that one so
-// it doesn't fail unrelated tests.
+// O SSR de dev do TanStack Start ocasionalmente lança um erro de hydration
+// mismatch do React (bug real: uma tag <style> difere entre o render do
+// servidor e do cliente). O Cypress trata isso como uma exceção fatal não
+// tratada; ignora só essa para não falhar testes que não têm nada a ver com isso.
 Cypress.on('uncaught:exception', (err) => {
   if (err.message.includes('Hydration failed')) return false
 })

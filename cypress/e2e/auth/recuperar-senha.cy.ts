@@ -5,9 +5,9 @@ describe('Recuperação de senha', () => {
     let account: TestAccount
 
     beforeEach(() => {
-      // apiRegister leaves the browser authenticated with this account's session
-      // cookie; it stays valid for the whole test (visiting a public page doesn't
-      // invalidate it), so afterEach can clean up with it as usual.
+      // apiRegister deixa o navegador autenticado com o cookie de sessão dessa
+      // conta; ele fica válido durante todo o teste (visitar uma página pública
+      // não o invalida), então o afterEach consegue limpar normalmente.
       cy.apiRegister().then((acc) => {
         account = acc
       })

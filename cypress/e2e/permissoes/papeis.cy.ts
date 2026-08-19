@@ -66,9 +66,9 @@ describe('Permissões por papel', () => {
     const listingTitle = `Fardos de PVC para moderação (Cypress) ${Date.now()}`
 
     beforeEach(() => {
-      // Registers as a normal SELLER (registerSchema doesn't accept ADMIN directly),
-      // creates a pending listing to moderate, then promotes the same account via
-      // the app's own admin-provisioning script — see promoteToAdmin in commands.ts.
+      // Registra como SELLER normal (registerSchema não aceita ADMIN direto),
+      // cria um anúncio pendente para moderar, e então promove a mesma conta via
+      // o próprio script de provisionamento de admin do app — ver promoteToAdmin em commands.ts.
       cy.apiRegister().then((acc) => {
         account = acc
         cy.promoteToAdmin(acc.email, acc.password)
@@ -92,7 +92,7 @@ describe('Permissões por papel', () => {
       cy.visitReady('/admin')
       cy.contains('tr', listingTitle).contains('button', 'Aprovar').click()
 
-      // Approving moves the listing out of the default "Em análise" (pending) filter.
+      // Aprovar tira o anúncio do filtro padrão "Em análise" (pendente).
       cy.contains('tr', listingTitle).should('not.exist')
     })
 
@@ -140,9 +140,9 @@ describe('Permissões por papel', () => {
     let targetCookies: Cypress.Cookie[] = []
 
     beforeEach(() => {
-      // Target: a separate disposable account that the admin will act on. Its
-      // cookies are saved (not just discarded) so cleanup can restore its
-      // session afterwards — the admin session takes over the browser next.
+      // Alvo: uma conta descartável separada sobre a qual o admin vai agir. Os
+      // cookies são salvos (não só descartados) para o cleanup poder restaurar
+      // essa sessão depois — a sessão do admin assume o navegador a seguir.
       cy.apiRegister().then((acc) => {
         target = acc
       })
@@ -158,10 +158,10 @@ describe('Permissões por papel', () => {
     })
 
     afterEach(() => {
-      // Admin session is active; delete it, then swap back in the target's
-      // cookies to delete that account too. If a test left the target
-      // suspended, DELETE /me/account would 403 (requireActiveUser) — every
-      // test below must leave it reactivated before finishing.
+      // A sessão do admin está ativa; apaga ela, depois troca pelos cookies do
+      // alvo para apagar essa conta também. Se um teste deixasse o alvo
+      // suspenso, DELETE /me/account daria 403 (requireActiveUser) — todo
+      // teste abaixo precisa deixá-lo reativado antes de terminar.
       cy.apiDeleteAccount()
       cy.clearCookies()
       targetCookies.forEach((c) => {
@@ -192,7 +192,7 @@ describe('Permissões por papel', () => {
       cy.contains('tr', target.company).should('have.class', 'row-suspended')
       cy.contains('tr', target.company).contains('button', 'Reativar').should('be.visible')
 
-      // Reactivate before the test ends — see the afterEach note above.
+      // Reativa antes do teste terminar — ver nota do afterEach acima.
       cy.contains('tr', target.company).contains('button', 'Reativar').click()
       cy.contains('tr', target.company).should('not.have.class', 'row-suspended')
     })

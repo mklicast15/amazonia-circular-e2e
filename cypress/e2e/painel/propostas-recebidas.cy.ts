@@ -14,8 +14,8 @@ describe('Painel — propostas recebidas', () => {
   }
 
   beforeEach(() => {
-    // Seller: publishes a listing and keeps its cookie aside (see proposta.cy.ts
-    // for why: restoring it later avoids an extra /auth/login round-trip on cleanup).
+    // Vendedor: publica um anúncio e guarda o cookie à parte (ver proposta.cy.ts
+    // para o motivo: restaurá-lo depois evita um round-trip extra de /auth/login no cleanup).
     cy.apiRegister()
     cy.apiCreateListing({ title: listingTitle, quantityKg: 3000 }).then((listing) => {
       listingId = listing.id
@@ -26,11 +26,11 @@ describe('Painel — propostas recebidas', () => {
     })
     cy.clearCookies()
 
-    // Buyer: separate account that submits the proposal the seller will act on.
-    // The form-fill has to happen inside this .then — `buyer` (the outer
-    // variable) is only assigned once this callback actually runs, which is
-    // after the command queue executes; referencing `buyer.email` directly in
-    // the beforeEach body would read it before that assignment happens.
+    // Comprador: conta separada que envia a proposta sobre a qual o vendedor vai agir.
+    // O preenchimento do formulário precisa ficar dentro deste .then — `buyer`
+    // (a variável externa) só é atribuída quando esse callback de fato roda,
+    // depois que a fila de comandos executa; referenciar `buyer.email` direto
+    // no corpo do beforeEach leria o valor antes dessa atribuição acontecer.
     cy.apiRegister().then((acc) => {
       buyer = acc
       cy.visitReady(`/products/${listingId}`)
@@ -66,8 +66,8 @@ describe('Painel — propostas recebidas', () => {
     cy.visitReady('/painel?tab=received')
 
     cy.contains('tr', buyer.name).contains('button', 'Registrar venda').click()
-    // Input starts prefilled with the listing's full quantity (3000 kg) — confirming
-    // that as-is sells the whole lot and flips the listing to "Vendido".
+    // O campo já vem preenchido com a quantidade total do anúncio (3000 kg) —
+    // confirmar assim vende o lote inteiro e vira o anúncio para "Vendido".
     cy.contains('tr', buyer.name).find('input[placeholder="kg vendidos"]').should('have.value', '3000')
     cy.contains('tr', buyer.name).contains('button', 'Confirmar').click()
 

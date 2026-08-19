@@ -16,7 +16,6 @@ describe('Publicar anúncio (wizard completo)', () => {
   it('TC-PUB-01: completa as 5 etapas do wizard e envia para aprovação', () => {
     cy.visitReady('/anuncie')
 
-    // Etapa 1: Material
     cy.get('#w-titulo').type('Aparas de PET Transparente Pós-Industrial (Cypress)')
     cy.get('#w-tipo').select('PET')
     cy.get('#w-forma').select('Fardos prensados')
@@ -27,20 +26,17 @@ describe('Publicar anúncio (wizard completo)', () => {
     cy.get('.image-upload-preview').should('be.visible')
     cy.contains('button', 'Próximo').click()
 
-    // Etapa 2: Quantidade
     cy.get('#w-qtd').type('5000')
     cy.contains('.choice-row button', 'Imediata').click()
     cy.contains('button', 'Próximo').click()
 
-    // Etapa 3: Características (opcional, avança sem preencher)
+    // Etapa opcional: avança sem preencher nada.
     cy.contains('h2', 'Características do material').should('be.visible')
     cy.contains('button', 'Próximo').click()
 
-    // Etapa 4: Local e coleta (opcional)
     cy.get('#w-local').type('Distrito Industrial, Manaus - AM')
     cy.contains('button', 'Próximo').click()
 
-    // Etapa 5: Revisão
     cy.contains('h2', 'Revisão').should('be.visible')
     cy.contains('button', 'Enviar para aprovação').click()
 
@@ -61,9 +57,9 @@ describe('Publicar anúncio (wizard completo)', () => {
     cy.clearCookies()
     cy.visitReady('/anuncie')
 
-    // /anuncie is a protected route: a session-less visit is redirected
-    // straight to /login (with an "expired session" notice) rather than
-    // rendering the wizard's own in-page "Entre para publicar" fallback.
+    // /anuncie é uma rota protegida: uma visita sem sessão é redirecionada
+    // direto para /login (com aviso de sessão expirada), em vez de renderizar
+    // o fallback "Entre para publicar" que o próprio wizard tem.
     cy.location('pathname').should('eq', '/login')
     cy.get('#w-titulo').should('not.exist')
   })

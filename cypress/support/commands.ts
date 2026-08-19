@@ -9,7 +9,7 @@ export interface TestAccount {
   phone: string
   location: string
   neighborhood: string
-  // Not sent to the API unless explicitly overridden — registerSchema defaults to SELLER.
+  // Não é enviado à API a menos que seja explicitamente sobrescrito — registerSchema usa SELLER por padrão.
   role?: 'SELLER' | 'BUYER'
 }
 
@@ -19,11 +19,11 @@ function randomDigits(len: number): string {
   return out
 }
 
-// Registers a brand-new throwaway account directly against the API (not through
-// the UI) and stores the resulting session cookie in the browser, so tests that
-// aren't specifically about signup/login can start already authenticated.
-// The backend's registerSchema only checks CNPJ length/format, not the real
-// checksum, so a random 14-digit string is fine for tests.
+// Registra uma conta descartável direto na API (não pela UI) e guarda o
+// cookie de sessão resultante no navegador, para testes que não são
+// especificamente sobre cadastro/login já começarem autenticados.
+// O registerSchema do backend só valida formato/tamanho do CNPJ, não o
+// dígito verificador real, então uma string aleatória de 14 dígitos serve.
 Cypress.Commands.add('apiRegister', (overrides: Partial<TestAccount> = {}) => {
   const stamp = Date.now()
   const account: TestAccount = {
@@ -46,10 +46,10 @@ Cypress.Commands.add('apiRegister', (overrides: Partial<TestAccount> = {}) => {
     .then(() => account)
 })
 
-// Deletes the account tied to whatever session cookie is currently set (LGPD
-// self-delete endpoint). Cascades to the account's listings/proposals/team, so
-// a single call cleans up everything a test created. Call this in an
-// `afterEach` for every spec that registers a throwaway account.
+// Apaga a conta ligada ao cookie de sessão atual (endpoint de autoexclusão
+// LGPD). Apaga em cascata anúncios/propostas/equipe da conta, então uma
+// única chamada limpa tudo que um teste criou. Chamar num `afterEach` em
+// todo spec que registra uma conta descartável.
 Cypress.Commands.add('apiDeleteAccount', () => {
   cy.request({
     method: 'DELETE',
@@ -58,9 +58,9 @@ Cypress.Commands.add('apiDeleteAccount', () => {
   })
 })
 
-// Creates a listing directly via the API for the currently-authenticated
-// session (used to set up state for specs that aren't about the creation
-// wizard itself, e.g. the proposal/negotiation flow).
+// Cria um anúncio direto pela API na sessão autenticada atual (usado para
+// montar o estado em specs que não são sobre o wizard de criação em si,
+// ex.: o fluxo de proposta/negociação).
 Cypress.Commands.add('apiCreateListing', (overrides: Record<string, unknown> = {}) => {
   const body = {
     title: 'Aparas de PEBD prensadas (Cypress)',
@@ -82,31 +82,32 @@ Cypress.Commands.add('apiCreateListing', (overrides: Record<string, unknown> = {
     .then((res) => res.body.listing as { id: number })
 })
 
-// Test-only: flips a listing straight to "published" by running a small script
-// against the database directly, bypassing admin moderation. The script
-// (server/src/scripts/testApproveListing.ts) lives in the app repo, not here —
-// see cypress.config.ts's `appServerPath` env var. Used only so the E2E suite
-// can reach the negotiation flow without needing real admin credentials.
+// Só para teste: vira um anúncio direto para "publicado" rodando um script
+// pequeno contra o banco, pulando a moderação do admin. O script
+// (server/src/scripts/testApproveListing.ts) vive no repo do app, não aqui —
+// ver a env var `appServerPath` no cypress.config.ts. Usado só para a suíte
+// E2E alcançar o fluxo de negociação sem precisar de credenciais de admin reais.
 Cypress.Commands.add('approveListingForTest', (id: number) => {
   const appServerPath = Cypress.env('appServerPath') as string
   cy.exec(`cd ${appServerPath} && npx tsx src/scripts/testApproveListing.ts ${id}`)
 })
 
-// Test-only: promotes an already-registered disposable account to ADMIN by
-// running the app repo's own admin-provisioning script (server/src/scripts/
-// createAdmin.ts) against it. The script upserts by email — since the account
-// already exists, it only flips role/status, leaving the password (and so the
-// existing session cookie's account) intact. The account is still deletable
-// afterwards via DELETE /me/account regardless of role.
+// Só para teste: promove a ADMIN uma conta descartável já registrada,
+// rodando o próprio script de provisionamento de admin do repo do app
+// (server/src/scripts/createAdmin.ts). O script faz upsert por e-mail —
+// como a conta já existe, ele só troca papel/status, mantendo a senha (e
+// portanto a conta do cookie de sessão atual) intacta. A conta continua
+// deletável depois via DELETE /me/account independente do papel.
 Cypress.Commands.add('promoteToAdmin', (email: string, password: string) => {
   const appServerPath = Cypress.env('appServerPath') as string
   cy.exec(`cd ${appServerPath} && npx tsx src/scripts/createAdmin.ts ${email} ${password}`)
 })
 
-// TanStack Start's dev SSR sometimes hits a hydration mismatch right after
-// load, which makes React discard and remount the tree client-side — any
-// input typed during that short window gets silently reset once the remount
-// lands. Visiting and pausing briefly before interacting dodges that window.
+// O SSR de dev do TanStack Start às vezes sofre um hydration mismatch logo
+// após o load, o que faz o React descartar e remontar a árvore no cliente —
+// qualquer campo digitado durante essa janela curta é silenciosamente
+// resetado quando o remount acontece. Visitar e pausar brevemente antes de
+// interagir evita essa janela.
 Cypress.Commands.add('visitReady', (url: string) => {
   cy.visit(url)
   cy.wait(800)

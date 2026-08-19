@@ -6,11 +6,10 @@ describe('Enviar proposta / negociação', () => {
   let sellerCookies: Cypress.Cookie[] = []
 
   beforeEach(() => {
-    // Seller: registers, creates a listing, approves it for test (bypassing
-    // real moderation). Its session cookie is saved (not just discarded) so
-    // cleanup can restore it later without a fresh /auth/login round-trip —
-    // that extra request was an occasional source of stranded accounts when
-    // it hiccuped.
+    // Vendedor: registra, cria um anúncio e aprova para teste (pulando a
+    // moderação real). O cookie de sessão é salvo (não só descartado) para o
+    // cleanup poder restaurá-lo depois sem um novo round-trip de /auth/login —
+    // essa requisição extra já foi fonte ocasional de contas órfãs quando falhava.
     cy.apiRegister()
     cy.apiCreateListing({ title: 'Fardos de PEAD para negociação (Cypress)' }).then((listing) => {
       listingId = listing.id
@@ -21,15 +20,12 @@ describe('Enviar proposta / negociação', () => {
     })
     cy.clearCookies()
 
-    // Buyer: separate throwaway account for sending the proposal.
     cy.apiRegister().then((acc) => {
       buyer = acc
     })
   })
 
   afterEach(() => {
-    // Buyer session is active at this point; delete it, then swap back in the
-    // seller's saved cookies to delete that account too.
     cy.apiDeleteAccount()
     cy.clearCookies()
     sellerCookies.forEach((c) => {

@@ -14,10 +14,10 @@ describe('Login', () => {
     cy.apiRegister().then((acc) => {
       account = acc
     })
-    // apiRegister leaves the browser authenticated (register() sets the session
-    // cookie). Save it and clear the jar so each test exercises the real login
-    // form starting logged out; cleanup below restores it regardless of what
-    // the test itself did to the session (e.g. locking the account out).
+    // apiRegister deixa o navegador autenticado (o registro já cria a sessão).
+    // Salva o cookie e limpa o jar para cada teste partir da tela de login
+    // deslogado; o cleanup abaixo restaura o cookie independente do que o
+    // teste tenha feito com a sessão (ex.: bloquear a conta).
     cy.getCookies().then((cookies) => {
       savedCookies = cookies
     })
@@ -50,12 +50,12 @@ describe('Login', () => {
 
   it('TC-LOG-03: bloqueia a conta após 5 tentativas de senha errada', () => {
     cy.visitReady('/login')
-    // Attempts 1-5: normal "wrong password" — the 5th is the one that flips the lock.
+    // Tentativas 1-5: senha errada normal — a 5ª é a que ativa o bloqueio.
     for (let i = 0; i < 5; i++) {
       attemptLogin(account.email, 'SenhaErrada999')
       cy.contains('.form-error', 'E-mail ou senha incorretos').should('be.visible')
     }
-    // 6th attempt (even with the correct password) hits the lock, not a password check.
+    // 6ª tentativa (mesmo com a senha certa) cai no bloqueio, não na checagem de senha.
     attemptLogin(account.email, account.password)
     cy.contains('.form-error', 'Muitas tentativas de login').should('be.visible')
   })

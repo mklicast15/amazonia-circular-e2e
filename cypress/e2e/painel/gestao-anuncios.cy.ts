@@ -46,7 +46,7 @@ describe('Painel — gestão de anúncios', () => {
     cy.visitReady('/painel?tab=listings')
     cy.contains('tr', title).contains('button', 'Excluir').click()
 
-    // Confirming with a reason shorter than 3 chars is blocked client-side.
+    // Confirmar com um motivo menor que 3 caracteres é bloqueado no front-end.
     cy.contains('tr', title).find('.admin-reject-input').type('a')
     cy.contains('tr', title).contains('button', 'Confirmar exclusão').click()
     cy.contains('tr', title).find('.field-error').should('be.visible')

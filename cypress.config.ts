@@ -11,21 +11,22 @@ export default defineConfig({
   },
 
   env: {
-    // API used directly by test setup/cleanup (register + delete throwaway
-    // accounts) — never through the UI, to keep tests fast and independent
-    // of unrelated frontend bugs.
+    // API usada direto pelo setup/cleanup dos testes (registrar e apagar
+    // contas descartáveis) — nunca pela UI, para os testes ficarem rápidos e
+    // independentes de bugs do frontend que não têm nada a ver com isso.
     apiUrl: "http://localhost:4000",
-    // Path to the app repo's server/ folder (this repo is intentionally
-    // separate from the app repo). Override with:
-    //   CYPRESS_appServerPath=/path/to/amazoniacircular/server npm run cy:run
+    // Caminho para a pasta server/ do repo do app (este repo é intencionalmente
+    // separado do repo do app). Sobrescrever com:
+    //   CYPRESS_appServerPath=/caminho/para/amazoniacircular/server npm run cy:run
     appServerPath: "../ac-tester-automation/server",
   },
 
   defaultCommandTimeout: 8000,
   video: false,
-  // The app's dev-mode SSR occasionally hits a hydration mismatch and remounts
-  // the page client-side (see cypress/support/e2e.ts); on a cold route visit
-  // this can rarely land mid-remount and make an input transiently unusable.
-  // One retry absorbs that known flake without masking real failures.
+  // O SSR do modo dev do app ocasionalmente sofre um hydration mismatch e
+  // remonta a página no cliente (ver cypress/support/e2e.ts); numa visita a
+  // uma rota "fria" isso raramente pode cair no meio do remount e deixar um
+  // campo temporariamente inutilizável. Um retry absorve esse flake conhecido
+  // sem mascarar falhas reais.
   retries: { runMode: 1 },
 });
