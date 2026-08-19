@@ -10,7 +10,7 @@ que muitas vezes vira passivo ambiental por falta de canal de venda — a
 plataforma dá visibilidade a esse material e aproxima quem vende de quem
 compra, mantendo o plástico em circulação na economia.
 
-**Produção:** https://amazoniacircular.com.br
+**Produção:** https://www.amazoniacircular.com.br/
 
 Este repositório contém só a suíte de testes E2E — o código da aplicação
 (frontend/backend) vive em um repositório separado, de propósito, para não
