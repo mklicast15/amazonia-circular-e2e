@@ -1,6 +1,7 @@
+import { createHmac, randomBytes } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { request, type APIRequestContext } from '@playwright/test'
-import { API_URL, APP_SERVER_PATH } from './env'
+import { ALLOW_REMOTE_DB, API_URL, APP_DATABASE_URL, APP_SERVER_PATH } from './env'
 
 export interface TestAccount {
   email: string
@@ -13,6 +14,8 @@ export interface TestAccount {
   neighborhood: string
   // Não é enviado à API a menos que seja explicitamente sobrescrito — registerSchema usa SELLER por padrão.
   role?: 'SELLER' | 'BUYER'
+  // Com convite, a conta entra numa empresa existente (company/cnpj são ignorados).
+  inviteCode?: string
 }
 
 // Snapshot dos cookies de sessão logo após o registro. O cleanup usa esse
@@ -24,6 +27,18 @@ function randomDigits(len: number): string {
   let out = ''
   for (let i = 0; i < len; i++) out += Math.floor(Math.random() * 10)
   return out
+}
+
+// CNPJ aleatório com dígitos verificadores corretos — o cadastro valida o DV.
+export function randomCnpj(): string {
+  const base = randomDigits(8) + '0001'
+  const digit = (b: string) => {
+    const weights = b.length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    const rest = [...b].reduce((acc, ch, i) => acc + Number(ch) * weights[i], 0) % 11
+    return rest < 2 ? 0 : 11 - rest
+  }
+  const first = digit(base)
+  return `${base}${first}${digit(base + first)}`
 }
 
 let seq = 0
@@ -46,16 +61,15 @@ export function clientIpHeaders(): Record<string, string> {
   return { 'X-Forwarded-For': fakeClientIp() }
 }
 
-// O registerSchema do backend só valida formato/tamanho do CNPJ, não o
-// dígito verificador real, então uma string aleatória de 14 dígitos serve.
 export function buildAccount(overrides: Partial<TestAccount> = {}): TestAccount {
   const stamp = uniqueStamp()
   return {
     email: `e2e-${stamp}@example.com`,
-    password: 'TesteSenha123',
+    // Senha aleatória por conta: se alguma ficar órfã, ninguém conhece a senha dela.
+    password: `Teste-${randomBytes(9).toString('base64url')}`,
     name: 'Ana Teste E2E',
     company: `Playwright E2E Materiais ${stamp}`,
-    cnpj: randomDigits(14),
+    cnpj: randomCnpj(),
     phone: '92991234567',
     location: 'Manaus - AM',
     neighborhood: 'Centro',
@@ -101,7 +115,8 @@ export async function apiCreateListing(
       plasticType: 'PEBD',
       condition: 'limpo',
       quantityKg: 5000,
-      image: 'https://picsum.photos/seed/playwright/800/600',
+      // O backend só aceita imagens da própria plataforma (upload ou caminho do site).
+      image: '/logo-amazonia-icon.webp',
       shortDescription: 'Material de teste gerado pela suíte Playwright.',
       description: 'Anúncio de teste criado via API pela automação Playwright.',
       saveAsDraft: false,
@@ -125,11 +140,67 @@ export function promoteToAdmin(email: string, password: string): void {
   execFileSync('npx', ['tsx', 'src/scripts/createAdmin.ts', email, password], {
     cwd: APP_SERVER_PATH,
     stdio: 'pipe',
+    // DATABASE_URL explícito: o dotenv do app não sobrescreve variáveis já definidas.
+    env: { ...process.env, DATABASE_URL: appDatabaseUrl() },
   })
 }
 
+// O script roda fora da API, então precisa receber o mesmo banco dela. Sem
+// APP_DATABASE_URL ele usaria o server/.env do app (produção) e criaria contas
+// ADMIN lá — já aconteceu. Bancos que não são locais exigem E2E_ALLOW_REMOTE_DB=1.
+function appDatabaseUrl(): string {
+  if (!APP_DATABASE_URL) {
+    throw new Error('Defina APP_DATABASE_URL com o mesmo banco da API sob teste (ver README).')
+  }
+  const host = new URL(APP_DATABASE_URL).hostname
+  const local = host === 'localhost' || host === '127.0.0.1' || host === '::1'
+  if (!local && !ALLOW_REMOTE_DB) {
+    throw new Error(`APP_DATABASE_URL aponta para ${host}, que não é local. Para rodar mesmo assim, defina E2E_ALLOW_REMOTE_DB=1.`)
+  }
+  return APP_DATABASE_URL
+}
+
+// TOTP (RFC 6238, SHA-1, 6 dígitos, 30 s) a partir do segredo base32 que o
+// /auth/mfa/setup devolve — o mesmo que um app autenticador calcularia.
+export function totp(secretBase32: string, now = Date.now()): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+  let bits = ''
+  for (const ch of secretBase32.replace(/=+$/, '').toUpperCase()) {
+    bits += alphabet.indexOf(ch).toString(2).padStart(5, '0')
+  }
+  const key = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)))
+  const counter = Buffer.alloc(8)
+  counter.writeBigUInt64BE(BigInt(Math.floor(now / 1000 / 30)))
+  const hmac = createHmac('sha1', key).update(counter).digest()
+  const offset = hmac[hmac.length - 1] & 0xf
+  const code = (hmac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000
+  return String(code).padStart(6, '0')
+}
+
+// Promove a conta e faz o login de admin completo (senha → configuração do MFA →
+// código TOTP) no contexto `api`. O /admin só aceita sessões que passaram pelo MFA,
+// então a sessão aberta no cadastro não serve. Devolve o novo snapshot da sessão.
+export async function loginAsAdmin(api: APIRequestContext, account: TestAccount): Promise<SessionState> {
+  promoteToAdmin(account.email, account.password)
+  const login = await api.post(`${API_URL}/auth/login`, { data: { email: account.email, password: account.password } })
+  const { mfaToken } = await login.json()
+  if (!mfaToken) throw new Error(`login de admin sem desafio MFA (${login.status()}): ${await login.text()}`)
+  const setup = await api.post(`${API_URL}/auth/mfa/setup`, { data: { mfaToken } })
+  const { secret } = await setup.json()
+  const confirm = await api.post(`${API_URL}/auth/mfa/confirm`, { data: { mfaToken, code: totp(secret) } })
+  if (!confirm.ok()) throw new Error(`confirmação do MFA falhou (${confirm.status()}): ${await confirm.text()}`)
+  return api.storageState()
+}
+
+// Gera um código de convite da empresa da sessão `api` (só o dono pode).
+export async function apiCreateInvite(api: APIRequestContext): Promise<string> {
+  const res = await api.post(`${API_URL}/me/invites`)
+  if (!res.ok()) throw new Error(`POST /me/invites falhou (${res.status()}): ${await res.text()}`)
+  return (await res.json()).invite.code
+}
+
 // Aprova um anúncio pendente pela mesma rota que a UI de moderação usa.
-// `admin` precisa ser uma sessão de conta promovida (ver fixture `moderator`).
+// `admin` precisa ser uma sessão de admin com MFA (ver fixture `moderator`).
 export async function apiApproveListing(admin: APIRequestContext, id: number): Promise<void> {
   const res = await admin.patch(`${API_URL}/admin/listings/${id}/moderate`, {
     data: { status: 'published' },

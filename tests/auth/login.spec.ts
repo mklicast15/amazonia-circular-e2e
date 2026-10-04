@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test'
+import { API_URL } from '../support/env'
 import { acceptCookieConsent, expect, gotoReady, test } from '../support/fixtures'
 
 async function attemptLogin(page: Page, email: string, password: string) {
@@ -51,5 +52,21 @@ test.describe('Login', () => {
 
     await expect(page).toHaveURL((url) => url.pathname === '/login')
     await expect(page.locator('.user-menu-trigger-name')).toHaveCount(0)
+  })
+
+  // Quem erra a senha bloqueia só a si mesmo (e-mail + IP), não o dono da
+  // conta — antes, 5 erros de qualquer pessoa travavam a conta (JardelS-Lima/amazoniacircular#199).
+  test('TC-LOG-05: tentativas erradas de outra origem não bloqueiam o dono da conta', async ({ page, account, newActor }) => {
+    const attacker = await newActor() // navegador com outro IP de cliente
+    for (let i = 0; i < 6; i++) {
+      await attacker.api.post(`${API_URL}/auth/login`, { data: { email: account.email, password: 'SenhaErrada999' } })
+    }
+    const lastTry = await attacker.api.post(`${API_URL}/auth/login`, { data: { email: account.email, password: account.password } })
+    expect(lastTry.status(), 'a origem que errou fica bloqueada').toBe(429)
+
+    await gotoReady(page, '/login')
+    await attemptLogin(page, account.email, account.password)
+    await expect(page).toHaveURL((url) => url.pathname === '/')
+    await expect(page.locator('.user-menu-trigger-name')).toContainText(account.name)
   })
 })

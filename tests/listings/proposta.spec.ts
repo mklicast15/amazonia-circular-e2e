@@ -49,4 +49,12 @@ test.describe('Enviar proposta / negociação', () => {
     await expect(page.getByText('Para enviar uma proposta você precisa estar logado')).toBeVisible()
     await expect(page.locator('#contact-message')).toHaveCount(0)
   })
+
+  // Contatos do vendedor só para e-mail confirmado (JardelS-Lima/amazoniacircular#197).
+  test('TC-PROP-04: conta sem e-mail confirmado não vê os contatos do vendedor', async ({ page, account: _buyer }) => {
+    await gotoReady(page, `/products/${listingId}`)
+
+    await expect(page.getByText('Confirme seu e-mail para ver os contatos do vendedor')).toBeVisible()
+    await expect(page.locator('.sp-contact-item')).toHaveCount(0)
+  })
 })

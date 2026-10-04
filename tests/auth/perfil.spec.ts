@@ -44,12 +44,10 @@ test.describe('Conta e perfil', () => {
   test('TC-PERF-03: encerra a sessão ao clicar em Sair', async ({ page, account: _account }) => {
     await gotoReady(page, '/')
     await page.locator('.user-menu-trigger').click()
-    // O logout do app é fire-and-forget (limpa o usuário na tela antes do
-    // POST /auth/logout responder); navegar antes da resposta abortaria o
-    // request e a sessão continuaria viva — então espera a resposta.
-    const loggedOut = page.waitForResponse((r) => r.url().endsWith('/auth/logout') && r.ok())
     await page.locator('.user-menu-dropdown-item', { hasText: 'Sair' }).click()
-    await loggedOut
+    // Navega assim que a tela mostra o usuário deslogado, sem esperar o
+    // POST /auth/logout — a sessão já ficou viva nesse caso
+    // (JardelS-Lima/amazoniacircular#190).
 
     await expect(page.locator('.user-menu-trigger')).toHaveCount(0)
     await gotoReady(page, '/painel')

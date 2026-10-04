@@ -35,11 +35,34 @@ você precisa do repo `amazoniacircular` rodando localmente:
 - Frontend em `http://localhost:3000`
 - Backend em `http://localhost:4000`
 
-**Importante:** o backend local aponta para o banco de **produção**. Toda
-automação usa contas descartáveis: registra via API, age, e apaga a conta ao
-final (`DELETE /me/account`, que apaga em cascata anúncios/propostas/equipe).
-Nenhum teste deve fugir desse padrão — use as fixtures abaixo em vez de
-registrar contas na mão.
+### Banco de dados: use um banco local
+
+Rode a API do app apontando para um **Postgres local** com as migrações
+aplicadas, e nunca para o banco de produção do `server/.env`:
+
+```bash
+# no repo do app (amazoniacircular/server)
+export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/amazonia
+npx prisma migrate deploy
+RESEND_API_KEY= SMTP_HOST= npx tsx src/index.ts   # sem envio de e-mail real
+```
+
+A suíte precisa saber qual é esse banco, porque os scripts do app que ela
+executa (ver "Contas ADMIN") rodam fora da API:
+
+```bash
+APP_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/amazonia npm test
+```
+
+Sem `APP_DATABASE_URL` os testes de admin falham de propósito, e um banco que
+não seja `localhost` só é aceito com `E2E_ALLOW_REMOTE_DB=1`. Essa trava existe
+porque o script, sem o banco explícito, usava o `server/.env` do app
+(produção) e chegou a criar contas ADMIN lá.
+
+Mesmo no banco local, toda automação usa contas descartáveis: registra via
+API, age e apaga a conta ao final (`DELETE /me/account`, que apaga em cascata
+anúncios, propostas e equipe). Cada conta tem senha aleatória. Use as
+fixtures abaixo em vez de registrar contas na mão.
 
 ## Estrutura
 
@@ -71,13 +94,12 @@ não pedem `account` rodam deslogados.
 ### Contas ADMIN
 
 Não existe cadastro público com papel ADMIN (o `registerSchema` só aceita
-`SELLER`/`BUYER`). `promoteToAdmin` (em `tests/support/api.ts`) registra uma
-conta descartável normal e a promove rodando o próprio script de
-provisionamento do app (`server/src/scripts/createAdmin.ts`). Como ele faz
-`upsert` por e-mail, promove a conta já registrada em vez de criar uma nova,
-e ela continua descartável normalmente ao final do teste. O backend relê o
-papel do banco a cada requisição, então a sessão já aberta vale como admin
-sem precisar de novo login (que exigiria MFA).
+`SELLER`/`BUYER`). `loginAsAdmin` (em `tests/support/api.ts`) promove uma
+conta descartável rodando o script de provisionamento do app
+(`server/src/scripts/createAdmin.ts`, com `DATABASE_URL=APP_DATABASE_URL`) e
+faz o login de admin completo: senha, configuração do MFA e código TOTP,
+calculado na própria suíte. O `/admin` só aceita sessões que passaram pelo
+MFA, então a sessão aberta no cadastro não serve.
 
 ### Caminho do repo do app
 
@@ -87,7 +109,7 @@ apontada pela env var `APP_SERVER_PATH` (default:
 clone estiver em outro lugar:
 
 ```bash
-APP_SERVER_PATH=/caminho/para/amazoniacircular/server npm test
+APP_SERVER_PATH=/caminho/para/amazoniacircular/server APP_DATABASE_URL=... npm test
 ```
 
 Também dá para sobrescrever `BASE_URL` (frontend) e `API_URL` (backend).
