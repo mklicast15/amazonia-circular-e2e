@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, gotoReady, test } from '../support/fixtures'
+import { acceptCookieConsent, expect, gotoReady, test } from '../support/fixtures'
 
 async function attemptLogin(page: Page, email: string, password: string) {
   await page.locator('#login-email').fill(email)
@@ -12,8 +12,9 @@ test.describe('Login', () => {
   // sessão). Limpa os cookies para cada teste partir da tela de login
   // deslogado — o cleanup da fixture usa o snapshot da sessão, não o
   // navegador, então continua funcionando.
-  test.beforeEach(async ({ account: _account, context }) => {
+  test.beforeEach(async ({ account: _account, context, baseURL }) => {
     await context.clearCookies()
+    await acceptCookieConsent(context, baseURL!)
   })
 
   test('TC-LOG-01: autentica com credenciais corretas e leva ao marketplace', async ({ page, account }) => {

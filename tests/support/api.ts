@@ -31,6 +31,21 @@ export function uniqueStamp(): string {
   return `${Date.now()}${process.pid}${seq++}`
 }
 
+// O backend limita /auth/register e /auth/login a 10 requisições por IP a
+// cada 15 min (authLimiter), e a suíte registra dezenas de contas. Localmente
+// não há proxy na frente da API e ela roda com `trust proxy 1`, então o IP
+// do cliente vem do X-Forwarded-For — cada teste/ator usa um IP falso
+// próprio para não esbarrar no limite. Em produção (atrás do proxy do Render)
+// isso não tem efeito, porque o proxy acrescenta o IP real no fim do header.
+export function fakeClientIp(): string {
+  const n = () => Math.floor(Math.random() * 254) + 1
+  return `10.${n()}.${n()}.${n()}`
+}
+
+export function clientIpHeaders(): Record<string, string> {
+  return { 'X-Forwarded-For': fakeClientIp() }
+}
+
 // O registerSchema do backend só valida formato/tamanho do CNPJ, não o
 // dígito verificador real, então uma string aleatória de 14 dígitos serve.
 export function buildAccount(overrides: Partial<TestAccount> = {}): TestAccount {
@@ -63,7 +78,7 @@ export async function apiRegister(api: APIRequestContext, account: TestAccount):
 // cascata anúncios/propostas/equipe da conta. 401/403 são tolerados: o
 // próprio teste pode já ter excluído a conta (TC-PERF-04).
 export async function apiDeleteAccount(session: SessionState): Promise<void> {
-  const ctx = await request.newContext({ storageState: session })
+  const ctx = await request.newContext({ storageState: session, extraHTTPHeaders: clientIpHeaders() })
   try {
     const res = await ctx.delete(`${API_URL}/me/account`)
     if (!res.ok() && ![401, 403].includes(res.status())) {

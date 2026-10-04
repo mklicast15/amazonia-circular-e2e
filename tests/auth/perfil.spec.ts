@@ -20,7 +20,10 @@ test.describe('Conta e perfil', () => {
     await page.locator('#um-bairro').fill('Compensa')
     await page.getByRole('button', { name: 'Salvar', exact: true }).click()
 
-    await expect(page.locator('.user-info-value', { hasText: 'Beatriz Teste' })).toBeVisible()
+    // O modal não exibe o nome (só empresa/contato/endereço) — o nome
+    // atualizado aparece no gatilho do menu do usuário.
+    await expect(page.locator('.user-info-value', { hasText: '(92) 90000-1111' })).toBeVisible()
+    await expect(page.locator('.user-info-value', { hasText: 'Compensa' })).toBeVisible()
     await expect(page.locator('.user-menu-trigger-name')).toContainText('Beatriz Teste')
   })
 
@@ -41,7 +44,12 @@ test.describe('Conta e perfil', () => {
   test('TC-PERF-03: encerra a sessão ao clicar em Sair', async ({ page, account: _account }) => {
     await gotoReady(page, '/')
     await page.locator('.user-menu-trigger').click()
+    // O logout do app é fire-and-forget (limpa o usuário na tela antes do
+    // POST /auth/logout responder); navegar antes da resposta abortaria o
+    // request e a sessão continuaria viva — então espera a resposta.
+    const loggedOut = page.waitForResponse((r) => r.url().endsWith('/auth/logout') && r.ok())
     await page.locator('.user-menu-dropdown-item', { hasText: 'Sair' }).click()
+    await loggedOut
 
     await expect(page.locator('.user-menu-trigger')).toHaveCount(0)
     await gotoReady(page, '/painel')

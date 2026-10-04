@@ -6,7 +6,10 @@ async function expectBlockedFromAdmin(page: Page) {
   await gotoReady(page, '/admin')
 
   await expect(page).toHaveURL((url) => url.pathname === '/')
-  await expect(page.locator('.toast-error', { hasText: 'Você não tem acesso a esta área.' })).toBeVisible()
+  // .first(): hoje o app dispara esse toast duas vezes (o efeito de guarda em
+  // src/routes/admin/$tab.tsx roda de novo antes do redirect terminar) — o
+  // caso verifica o bloqueio, não a contagem de toasts.
+  await expect(page.locator('.toast-error', { hasText: 'Você não tem acesso a esta área.' }).first()).toBeVisible()
 }
 
 test.describe('Permissões por papel', () => {
