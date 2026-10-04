@@ -2,7 +2,7 @@
 
 Este documento lista todos os casos de teste automatizados na suíte E2E da
 Amazônia Circular, organizados por fluxo de negócio. Cada caso tem uma
-automação Cypress correspondente em `cypress/e2e/`, referenciada no
+automação Playwright correspondente em `tests/`, referenciada no
 cabeçalho de cada seção.
 
 Para instruções de execução da suíte, ver o [`README.md`](../README.md) na
@@ -27,23 +27,23 @@ raiz do repositório.
 
 | # | Fluxo | Spec | Casos |
 |---|---|---|---|
-| 1 | [Cadastro](#1-cadastro) | `auth/cadastro.cy.ts` | TC-CAD-01 a 03 |
-| 2 | [Login](#2-login) | `auth/login.cy.ts` | TC-LOG-01 a 04 |
-| 3 | [Recuperação de senha](#3-recuperação-de-senha) | `auth/recuperar-senha.cy.ts` | TC-REC-01/02, TC-RS-01 |
-| 4 | [Publicar anúncio](#4-publicar-anúncio) | `listings/publicar-anuncio.cy.ts` | TC-PUB-01 a 03 |
-| 5 | [Enviar proposta / negociar](#5-enviar-proposta--negociar) | `listings/proposta.cy.ts` | TC-PROP-01 a 03 |
-| 6 | [Painel — gestão de anúncios](#6-painel--gestão-de-anúncios) | `painel/gestao-anuncios.cy.ts` | TC-PAI-01 a 03 |
-| 7 | [Painel — propostas recebidas](#7-painel--propostas-recebidas) | `painel/propostas-recebidas.cy.ts` | TC-PROPR-01/02 |
-| 8 | [Conta e perfil](#8-conta-e-perfil) | `auth/perfil.cy.ts` | TC-PERF-01 a 04 |
-| 9 | [Permissões por papel](#9-permissões-por-papel) | `permissoes/papeis.cy.ts` | TC-PERM-01 a 09 |
+| 1 | [Cadastro](#1-cadastro) | `auth/cadastro.spec.ts` | TC-CAD-01 a 03 |
+| 2 | [Login](#2-login) | `auth/login.spec.ts` | TC-LOG-01 a 04 |
+| 3 | [Recuperação de senha](#3-recuperação-de-senha) | `auth/recuperar-senha.spec.ts` | TC-REC-01/02, TC-RS-01 |
+| 4 | [Publicar anúncio](#4-publicar-anúncio) | `listings/publicar-anuncio.spec.ts` | TC-PUB-01 a 03 |
+| 5 | [Enviar proposta / negociar](#5-enviar-proposta--negociar) | `listings/proposta.spec.ts` | TC-PROP-01 a 03 |
+| 6 | [Painel — gestão de anúncios](#6-painel--gestão-de-anúncios) | `painel/gestao-anuncios.spec.ts` | TC-PAI-01 a 03 |
+| 7 | [Painel — propostas recebidas](#7-painel--propostas-recebidas) | `painel/propostas-recebidas.spec.ts` | TC-PROPR-01/02 |
+| 8 | [Conta e perfil](#8-conta-e-perfil) | `auth/perfil.spec.ts` | TC-PERF-01 a 04 |
+| 9 | [Permissões por papel](#9-permissões-por-papel) | `permissoes/papeis.spec.ts` | TC-PERM-01 a 09 |
 
-Total: **28 casos** cobrindo 9 fluxos.
+Total: **34 casos** cobrindo 9 fluxos.
 
 ---
 
 ## 1. Cadastro
 
-`cypress/e2e/auth/cadastro.cy.ts`
+`tests/auth/cadastro.spec.ts`
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
@@ -53,7 +53,7 @@ Total: **28 casos** cobrindo 9 fluxos.
 
 ## 2. Login
 
-`cypress/e2e/auth/login.cy.ts`
+`tests/auth/login.spec.ts`
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
@@ -64,7 +64,7 @@ Total: **28 casos** cobrindo 9 fluxos.
 
 ## 3. Recuperação de senha
 
-`cypress/e2e/auth/recuperar-senha.cy.ts`
+`tests/auth/recuperar-senha.spec.ts`
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
@@ -77,28 +77,29 @@ Total: **28 casos** cobrindo 9 fluxos.
 > redefinição só é persistido como hash (`issueVerificationToken`/
 > `consumeVerificationToken` no backend) — o valor em texto puro nunca fica
 > recuperável para o teste, nem direto no banco. Automatizar o fluxo
-> completo exigiria um hook test-only no repo do app (mesmo padrão do
-> `testApproveListing.ts`) que devolvesse o token em texto puro fora de
-> produção.
+> completo exigiria um hook test-only no repo do app que devolvesse o token
+> em texto puro fora de produção.
 
 ## 4. Publicar anúncio
 
-`cypress/e2e/listings/publicar-anuncio.cy.ts`
+`tests/listings/publicar-anuncio.spec.ts`
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
 | TC-PUB-01 | Completar as 5 etapas do wizard (Material, Quantidade, Características, Local e coleta, Revisão) com dados válidos e clicar em "Enviar para aprovação" | Mensagem "Anúncio enviado para análise!", link para "Ir para o painel" |
 | TC-PUB-02 | Tentar avançar da etapa "Material" sem preencher os campos obrigatórios | Avanço bloqueado, erros de campo exibidos, permanece na etapa 1 |
-| TC-PUB-03 | Acessar `/anuncie` sem estar autenticado | Redirecionado para `/login`, formulário do wizard não é renderizado |
+| TC-PUB-03 | Acessar `/anuncie` sem estar autenticado | Exibe "Entre para publicar" com link para `/login`; formulário do wizard não é renderizado |
 
-> **Nota:** como não há credenciais de admin disponíveis para automação, a
-> aprovação de anúncios usados no teste de proposta é feita por um script
-> interno de teste (`server/src/scripts/testApproveListing.ts`), que só
-> existe para uso da suíte — não deve ser usado fora dela.
+> **Nota:** os anúncios usados nos testes de proposta e de painel são
+> aprovados pela mesma rota da UI de moderação
+> (`PATCH /admin/listings/:id/moderate`), usando uma conta descartável
+> promovida a ADMIN uma vez por worker (fixture `moderator` em
+> `tests/support/fixtures.ts`). Não depende de nenhum script test-only no
+> repo do app.
 
 ## 5. Enviar proposta / negociar
 
-`cypress/e2e/listings/proposta.cy.ts`
+`tests/listings/proposta.spec.ts`
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
@@ -108,7 +109,7 @@ Total: **28 casos** cobrindo 9 fluxos.
 
 ## 6. Painel — gestão de anúncios
 
-`cypress/e2e/painel/gestao-anuncios.cy.ts`
+`tests/painel/gestao-anuncios.spec.ts`
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
@@ -118,31 +119,31 @@ Total: **28 casos** cobrindo 9 fluxos.
 
 ## 7. Painel — propostas recebidas
 
-`cypress/e2e/painel/propostas-recebidas.cy.ts`
+`tests/painel/propostas-recebidas.spec.ts`
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
-| TC-PROPR-01 | Vendedor altera o status de uma proposta recebida (Nova → Lida) | Select reflete o novo status |
+| TC-PROPR-01 | Vendedor altera o status de uma proposta recebida (Nova → Lida) | Dropdown de status reflete o novo valor |
 | TC-PROPR-02 | Vendedor registra a venda a partir de uma proposta (confirmando no diálogo) | Anúncio é marcado como vendido; linha da proposta mostra "Anúncio vendido" |
 
 ## 8. Conta e perfil
 
-`cypress/e2e/auth/perfil.cy.ts`
+`tests/auth/perfil.spec.ts`
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
 | TC-PERF-01 | Editar nome, telefone e bairro pelo menu "Editar perfil" | Dados atualizados exibidos na visão de detalhes e no nome do menu do usuário |
 | TC-PERF-02 | Salvar o perfil com o telefone vazio | Bloqueado com erro "Informe o telefone." |
 | TC-PERF-03 | Clicar em "Sair" no menu do usuário | Sessão encerrada; `/painel` passa a exigir login |
-| TC-PERF-04 | Excluir a própria conta pela seção de Privacidade e dados (LGPD) | Conta e sessão removidas, redirecionamento para `/` |
+| TC-PERF-04 | Excluir a própria conta pela seção de Privacidade e dados (LGPD) do modal "Editar perfil" | Conta e sessão removidas, redirecionamento para `/` |
 
 > **Nota:** a exclusão de conta pela UI usa o mesmo endpoint
 > (`DELETE /me/account`) que a limpeza automática da suíte
-> (`cy.apiDeleteAccount()`), então já é autolimpante — não deixa conta órfã.
+> (`apiDeleteAccount` em `tests/support/api.ts`), então já é autolimpante — não deixa conta órfã.
 
 ## 9. Permissões por papel
 
-`cypress/e2e/permissoes/papeis.cy.ts`
+`tests/permissoes/papeis.spec.ts`
 
 Papéis existentes: `SELLER`, `BUYER`, `ADMIN`.
 
@@ -153,8 +154,7 @@ Papéis existentes: `SELLER`, `BUYER`, `ADMIN`.
   o mesmo papel efetivo hoje.
 - `ADMIN` não pode ser escolhido no cadastro público; só existe via
   promoção. Os casos abaixo usam o próprio script de provisionamento do app
-  (`admin:create`) para promover uma conta descartável, análogo ao padrão
-  já usado pelo `testApproveListing.ts`.
+  (`server/src/scripts/createAdmin.ts`) para promover uma conta descartável.
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
@@ -172,13 +172,13 @@ Papéis existentes: `SELLER`, `BUYER`, `ADMIN`.
 
 ## Limitações conhecidas
 
-- A suíte roda com 1 retry automático (`cypress.config.ts`) para absorver um
-  flake conhecido do dev server (hydration mismatch do React logo após o
-  carregamento da página — ver comentário em `cypress/support/e2e.ts`). Se um
-  teste de `proposta.cy.ts` precisar desse retry, a conta descartável do
-  vendedor da tentativa que falhou pode não ser limpa (o estado do vendedor é
-  compartilhado a nível de `describe` e é sobrescrito a cada `beforeEach`).
-  É raro na prática; se acontecer, a conta órfã pode ser identificada pelo
-  prefixo de e-mail `cy-` e removida manualmente.
+- Em CI a suíte roda com 1 retry automático (`playwright.config.ts`) para
+  absorver um flake conhecido do dev server (hydration mismatch do React
+  logo após o carregamento da página — ver `gotoReady` em
+  `tests/support/fixtures.ts`). Cada tentativa cria e apaga as próprias
+  contas via fixtures, então um retry não deixa conta órfã. Se mesmo assim
+  sobrar alguma (ex.: processo morto no meio do teste), ela pode ser
+  identificada pelo prefixo de e-mail `e2e-` (ou `cy-`, da suíte Cypress
+  antiga) e removida manualmente.
 - Ver seção "Recuperação de senha" (item 3) para a limitação do fluxo de
   troca de senha.

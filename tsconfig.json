@@ -2,12 +2,12 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM"],
-    "types": ["cypress", "node"],
-    "moduleResolution": "bundler",
+    "types": ["node"],
     "module": "ESNext",
+    "moduleResolution": "bundler",
     "strict": true,
     "noEmit": true,
-    "isolatedModules": false
+    "skipLibCheck": true
   },
-  "include": ["**/*.ts"]
+  "include": ["playwright.config.ts", "tests/**/*.ts"]
 }
