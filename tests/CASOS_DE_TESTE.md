@@ -19,25 +19,26 @@ raiz do repositório.
   verifica (mensagem, redirecionamento, estado de UI).
 - Todas as automações usam **contas descartáveis**: criadas via API
   (`POST /auth/register`) e apagadas ao final (`DELETE /me/account`, que
-  apaga em cascata anúncios, propostas e equipe). Isso é obrigatório porque
-  o backend local aponta para o banco de **produção** — nenhum teste deve
-  fugir desse padrão. Ver seção "Pré-requisitos" do `README.md`.
+  apaga em cascata anúncios, propostas e equipe), cada uma com senha
+  aleatória. A suíte roda contra um **banco local** — ver "Pré-requisitos" do
+  `README.md`.
 
 ## Índice
 
 | # | Fluxo | Spec | Casos |
 |---|---|---|---|
-| 1 | [Cadastro](#1-cadastro) | `auth/cadastro.spec.ts` | TC-CAD-01 a 03 |
-| 2 | [Login](#2-login) | `auth/login.spec.ts` | TC-LOG-01 a 04 |
+| 1 | [Cadastro](#1-cadastro) | `auth/cadastro.spec.ts` | TC-CAD-01 a 04 |
+| 2 | [Login](#2-login) | `auth/login.spec.ts` | TC-LOG-01 a 05 |
 | 3 | [Recuperação de senha](#3-recuperação-de-senha) | `auth/recuperar-senha.spec.ts` | TC-REC-01/02, TC-RS-01 |
 | 4 | [Publicar anúncio](#4-publicar-anúncio) | `listings/publicar-anuncio.spec.ts` | TC-PUB-01 a 03 |
-| 5 | [Enviar proposta / negociar](#5-enviar-proposta--negociar) | `listings/proposta.spec.ts` | TC-PROP-01 a 03 |
+| 5 | [Enviar proposta / negociar](#5-enviar-proposta--negociar) | `listings/proposta.spec.ts` | TC-PROP-01 a 04 |
 | 6 | [Painel — gestão de anúncios](#6-painel--gestão-de-anúncios) | `painel/gestao-anuncios.spec.ts` | TC-PAI-01 a 03 |
 | 7 | [Painel — propostas recebidas](#7-painel--propostas-recebidas) | `painel/propostas-recebidas.spec.ts` | TC-PROPR-01/02 |
 | 8 | [Conta e perfil](#8-conta-e-perfil) | `auth/perfil.spec.ts` | TC-PERF-01 a 04 |
-| 9 | [Permissões por papel](#9-permissões-por-papel) | `permissoes/papeis.spec.ts` | TC-PERM-01 a 09 |
+| 9 | [Permissões por papel](#9-permissões-por-papel) | `permissoes/papeis.spec.ts` | TC-PERM-01 a 10 |
+| 10 | [Painel — equipe](#10-painel--equipe) | `painel/equipe.spec.ts` | TC-EQP-01 a 03 |
 
-Total: **34 casos** cobrindo 9 fluxos.
+Total: **41 casos** cobrindo 10 fluxos.
 
 ---
 
@@ -50,6 +51,7 @@ Total: **34 casos** cobrindo 9 fluxos.
 | TC-CAD-01 | Preencher todos os campos obrigatórios com dados válidos e aceitar a Política de Privacidade | Conta criada, sessão autenticada automaticamente, mensagem "Cadastro realizado com sucesso!" |
 | TC-CAD-02 | Informar um CNPJ com menos de 14 dígitos | Formulário não é enviado; erro de campo "CNPJ incompleto" |
 | TC-CAD-03 | Não marcar o checkbox de consentimento com a Política de Privacidade | Formulário não é enviado; erro pedindo aceite da Política de Privacidade |
+| TC-CAD-04 | Informar um CNPJ com dígito verificador inválido | Formulário não é enviado; erro de campo "CNPJ inválido" |
 
 ## 2. Login
 
@@ -61,6 +63,7 @@ Total: **34 casos** cobrindo 9 fluxos.
 | TC-LOG-02 | Senha incorreta | Mensagem "E-mail ou senha incorretos.", permanece em `/login` |
 | TC-LOG-03 | 5 tentativas seguidas de senha incorreta | Na 6ª tentativa (mesmo com senha certa), conta bloqueada por tempo, mensagem "Muitas tentativas de login..." |
 | TC-LOG-04 | Envio do formulário com e-mail e senha vazios | Formulário não é enviado; permanece em `/login`, sem sessão autenticada |
+| TC-LOG-05 | Outra origem (outro IP) erra a senha da conta 6 vezes | Só essa origem fica bloqueada (429); o dono da conta entra normalmente |
 
 ## 3. Recuperação de senha
 
@@ -106,6 +109,7 @@ Total: **34 casos** cobrindo 9 fluxos.
 | TC-PROP-01 | Comprador autenticado abre um anúncio publicado, preenche o formulário de contato e envia | Mensagem "Proposta enviada!" |
 | TC-PROP-02 | Enviar o formulário de contato sem nome/e-mail preenchidos | Envio bloqueado, erros de campo exibidos |
 | TC-PROP-03 | Tentar enviar proposta sem estar autenticado | Modal exibe aviso pedindo login em vez do formulário |
+| TC-PROP-04 | Conta logada sem e-mail confirmado abre um anúncio | Contatos do vendedor ocultos, com aviso "Confirme seu e-mail para ver os contatos do vendedor" |
 
 ## 6. Painel — gestão de anúncios
 
@@ -153,8 +157,9 @@ Papéis existentes: `SELLER`, `BUYER`, `ADMIN`.
   (buyers and sellers are unified)"*). Comprador e vendedor são, na prática,
   o mesmo papel efetivo hoje.
 - `ADMIN` não pode ser escolhido no cadastro público; só existe via
-  promoção. Os casos abaixo usam o próprio script de provisionamento do app
-  (`server/src/scripts/createAdmin.ts`) para promover uma conta descartável.
+  promoção. Os casos abaixo promovem uma conta descartável com o script de
+  provisionamento do app (`server/src/scripts/createAdmin.ts`) e fazem o
+  login de admin completo, com MFA (`loginAsAdmin`).
 
 | ID | Cenário | Resultado esperado |
 |---|---|---|
@@ -167,6 +172,20 @@ Papéis existentes: `SELLER`, `BUYER`, `ADMIN`.
 | TC-PERM-07 | ADMIN exclui um anúncio pela aba de Moderação, informando o motivo | Motivo com menos de 3 caracteres é bloqueado; ao confirmar (com diálogo), anúncio deixa de existir |
 | TC-PERM-08 | ADMIN concede e depois remove o selo de verificação de uma empresa (aba Usuários) | Botão alterna entre "Verificar" e "Remover selo" |
 | TC-PERM-09 | ADMIN suspende e depois reativa a conta de outro usuário (aba Usuários) | Suspender exige confirmação no diálogo; linha ganha destaque de suspensa; reativar não exige confirmação |
+| TC-PERM-10 | Conta promovida a ADMIN acessa `/admin` com a sessão aberta antes da promoção | Redirecionada para `/login` com aviso para entrar de novo (o `/admin` exige sessão com MFA) |
+
+## 10. Painel — equipe
+
+`tests/painel/equipe.spec.ts`
+
+O responsável pela empresa é quem a criou. Só ele gera convites e remove
+membros.
+
+| ID | Cenário | Resultado esperado |
+|---|---|---|
+| TC-EQP-01 | Responsável remove um membro pela aba Equipe (confirmando no diálogo) | Selo "Responsável" na linha do dono; membro some da lista |
+| TC-EQP-02 | Membro que não é o responsável abre a aba Equipe | Aviso de que só o responsável convida/remove; sem botões de convite/remoção; API recusa gerar convite (403) |
+| TC-EQP-03 | Membro removido entra no painel | Aviso bloqueante "Você foi removido da empresa"; API responde 403 `REMOVED_FROM_COMPANY`, mas libera exportar os dados; excluir a conta pelo aviso funciona |
 
 ---
 

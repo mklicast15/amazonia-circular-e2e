@@ -1,15 +1,15 @@
 import type { Page } from '@playwright/test'
-import { apiCreateListing, promoteToAdmin, uniqueStamp } from '../support/api'
+import { apiCreateListing, loginAsAdmin, promoteToAdmin, uniqueStamp } from '../support/api'
 import { expect, gotoReady, pickOption, row, test, type Actor } from '../support/fixtures'
 
 async function expectBlockedFromAdmin(page: Page) {
   await gotoReady(page, '/admin')
 
   await expect(page).toHaveURL((url) => url.pathname === '/')
-  // .first(): hoje o app dispara esse toast duas vezes (o efeito de guarda em
-  // src/routes/admin/$tab.tsx roda de novo antes do redirect terminar) — o
-  // caso verifica o bloqueio, não a contagem de toasts.
-  await expect(page.locator('.toast-error', { hasText: 'Você não tem acesso a esta área.' }).first()).toBeVisible()
+  const toast = page.locator('.toast-error', { hasText: 'Você não tem acesso a esta área.' })
+  await expect(toast.first()).toBeVisible()
+  // Uma vez só — o toast já saiu duplicado (JardelS-Lima/amazoniacircular#191).
+  await expect(toast).toHaveCount(1)
 }
 
 test.describe('Permissões por papel', () => {
@@ -52,16 +52,28 @@ test.describe('Permissões por papel', () => {
     })
   })
 
+  test.describe('Conta promovida a ADMIN', () => {
+    // O /admin exige uma sessão que passou pelo MFA; a sessão aberta antes da
+    // promoção não serve (JardelS-Lima/amazoniacircular#195).
+    test('TC-PERM-10: sessão anterior à promoção é mandada ao login com MFA', async ({ page, account }) => {
+      promoteToAdmin(account.email, account.password)
+      await gotoReady(page, '/admin')
+
+      await expect(page).toHaveURL((url) => url.pathname === '/login')
+      await expect(page.locator('.toast', { hasText: 'Faça login novamente para acessar a administração.' })).toBeVisible()
+    })
+  })
+
   test.describe('Administrador (ADMIN)', () => {
     let listingTitle: string
 
     // Registra como SELLER normal (registerSchema não aceita ADMIN direto),
-    // cria um anúncio pendente para moderar, e então promove a mesma conta via
-    // o próprio script de provisionamento de admin do app — ver promoteToAdmin em support/api.ts.
+    // cria um anúncio pendente para moderar, e então promove a mesma conta e
+    // faz o login de admin com MFA no navegador — ver loginAsAdmin em support/api.ts.
     test.beforeEach(async ({ context, account }) => {
       listingTitle = `Fardos de PVC para moderação (Playwright) ${uniqueStamp()}`
       await apiCreateListing(context.request, { title: listingTitle })
-      promoteToAdmin(account.email, account.password)
+      await loginAsAdmin(context.request, account)
     })
 
     test('TC-PERM-04: administradores acessam a área administrativa e veem a fila de moderação', async ({ page }) => {
@@ -122,9 +134,9 @@ test.describe('Permissões por papel', () => {
     // (fixture `account`, promovida) age. Se um teste deixasse o alvo suspenso,
     // o DELETE /me/account do cleanup daria 403 (requireActiveUser) — todo
     // teste abaixo precisa deixá-lo reativado antes de terminar.
-    test.beforeEach(async ({ account: admin, newActor }) => {
+    test.beforeEach(async ({ context, account: admin, newActor }) => {
       target = await newActor()
-      promoteToAdmin(admin.email, admin.password)
+      await loginAsAdmin(context.request, admin)
     })
 
     test('TC-PERM-08: administrador concede e depois remove o selo de verificação de uma empresa', async ({ page }) => {

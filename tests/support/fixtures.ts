@@ -11,7 +11,7 @@ import {
   apiRegister,
   buildAccount,
   clientIpHeaders,
-  promoteToAdmin,
+  loginAsAdmin,
   type SessionState,
   type TestAccount,
 } from './api'
@@ -39,7 +39,7 @@ type TestFixtures = {
 }
 
 type WorkerFixtures = {
-  // Sessão de API de uma conta descartável promovida a ADMIN, compartilhada
+  // Sessão de API (com MFA) de uma conta descartável promovida a ADMIN, compartilhada
   // pelo worker. Usada só para montar estado (ex.: aprovar anúncio sem passar
   // pela UI de moderação) — os testes de moderação em si usam a UI.
   moderator: APIRequestContext
@@ -87,7 +87,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
       const api = await playwright.request.newContext({ extraHTTPHeaders: clientIpHeaders() })
       const account = buildAccount({ name: 'Moderador Teste E2E' })
       const session = await apiRegister(api, account)
-      promoteToAdmin(account.email, account.password)
+      await loginAsAdmin(api, account)
       await use(api)
       await apiDeleteAccount(session)
       await api.dispose()

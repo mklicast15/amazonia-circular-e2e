@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { apiDeleteAccount, uniqueStamp } from '../support/api'
+import { apiDeleteAccount, randomCnpj, uniqueStamp } from '../support/api'
 import { expect, gotoReady, test } from '../support/fixtures'
 
 // /cadastro tem dois formulários (convite de equipe e cadastro de empresa),
@@ -33,7 +33,7 @@ test.describe('Cadastro de empresa', () => {
     await gotoReady(page, '/cadastro')
     await fillCompanyForm(page, {
       company: `Playwright E2E Materiais ${stamp}`,
-      cnpj: '11222333000181',
+      cnpj: randomCnpj(),
       email: `e2e-cad-${stamp}@example.com`,
     })
     await companyForm(page).locator('.consent-label input[type="checkbox"]').check()
@@ -61,13 +61,28 @@ test.describe('Cadastro de empresa', () => {
     await gotoReady(page, '/cadastro')
     await fillCompanyForm(page, {
       company: `Playwright E2E Sem Consentimento ${stamp}`,
-      cnpj: '99887766000155',
+      cnpj: randomCnpj(),
       email: `e2e-consent-${stamp}@example.com`,
     })
     // Checkbox de consentimento propositalmente deixado desmarcado.
     await page.getByRole('button', { name: 'Finalizar Cadastro' }).click()
 
     await expect(page.locator('.field-error', { hasText: 'Política de Privacidade' })).toBeVisible()
+    await expect(page.getByText('Cadastro realizado com sucesso!')).toHaveCount(0)
+  })
+
+  test('TC-CAD-04: bloqueia o envio quando o CNPJ tem dígito verificador inválido', async ({ page }) => {
+    const stamp = uniqueStamp()
+    await gotoReady(page, '/cadastro')
+    await fillCompanyForm(page, {
+      company: `Playwright E2E CNPJ Inválido ${stamp}`,
+      cnpj: '11222333000182', // DV correto seria 81
+      email: `e2e-cnpj-dv-${stamp}@example.com`,
+    })
+    await companyForm(page).locator('.consent-label input[type="checkbox"]').check()
+    await page.getByRole('button', { name: 'Finalizar Cadastro' }).click()
+
+    await expect(page.locator('.field-error', { hasText: 'CNPJ inválido' })).toBeVisible()
     await expect(page.getByText('Cadastro realizado com sucesso!')).toHaveCount(0)
   })
 })
