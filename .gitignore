@@ -4,3 +4,4 @@ playwright-report/
 blob-report/
 playwright/.cache/
 qa-accounts.local.json
+.env.staging
