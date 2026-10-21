@@ -1,7 +1,7 @@
 // Cria contas PERMANENTES de QA, uma por situação de plano, para validar os planos à mão
 // no ambiente sob teste (ex.: staging). Diferente da suíte, NÃO apaga nada no fim.
 //
-//   API_URL=https://amazonia-api-staging.onrender.com \
+//   API_URL=https://api-staging.amazoniacircular.com.br \
 //   E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... E2E_ADMIN_TOTP_SECRET=... \
 //   QA_EMAIL='seu.email+{slug}@gmail.com' \
 //   npx tsx scripts/contas-qa.ts

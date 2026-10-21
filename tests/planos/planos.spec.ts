@@ -126,6 +126,9 @@ test.describe.serial('Planos pagos', () => {
     await apiCreateListing(other.api, { title: otherTitle })
 
     await gotoReady(admin.page, '/admin/moderation')
+    // allInnerTexts não espera: só lê a ordem depois que as duas linhas chegaram.
+    await expect(row(admin.page, otherTitle)).toBeVisible()
+    await expect(row(admin.page, `Anúncio plano 5 (E2E ${stamp})`)).toBeVisible()
     const titles = await admin.page.locator('.admin-table tbody tr td:first-child').allInnerTexts()
     const partnerIdx = titles.findIndex((t) => t.includes(`Anúncio plano 5 (E2E ${stamp})`))
     const freeIdx = titles.findIndex((t) => t.includes(otherTitle))

@@ -125,12 +125,15 @@ o admin é uma conta já existente, informada por variáveis de ambiente.
 
 ```bash
 BASE_URL=https://staging.amazoniacircular.com.br \
-API_URL=https://amazonia-api-staging.onrender.com \
+API_URL=https://api-staging.amazoniacircular.com.br \
 SITE_HTTP_USER=<usuário do STAGING_AUTH> SITE_HTTP_PASSWORD=<senha> \
 E2E_ADMIN_EMAIL=<admin de QA> E2E_ADMIN_PASSWORD=<senha> E2E_ADMIN_TOTP_SECRET=<segredo do MFA> \
 npx playwright test tests/planos --workers=1
 ```
 
+- `API_URL` precisa ser o mesmo endereço que o site de staging usa
+  (`api-staging.amazoniacircular.com.br`, o `VITE_API_URL` do front), não o `*.onrender.com`:
+  a sessão aberta pela API vale para o domínio dela, e o site só a envia para esse endereço.
 - `SITE_HTTP_USER/PASSWORD`: um par do `STAGING_AUTH` (o site inteiro pede senha).
 - `E2E_ADMIN_*`: admin de QA. Para criar um, rode no repo do app, com o banco e a
   `MFA_ENCRYPTION_KEY` do staging: `npx tsx src/scripts/createAdmin.ts <e-mail> <senha>` —
@@ -146,7 +149,7 @@ cada situação — Semente, Raiz, Floresta e teste grátis do Floresta por prom
 uma com um anúncio publicado. Usa o mesmo admin de QA:
 
 ```bash
-API_URL=https://amazonia-api-staging.onrender.com E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... \
+API_URL=https://api-staging.amazoniacircular.com.br E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... \
 E2E_ADMIN_TOTP_SECRET=... QA_EMAIL='seu.email+{slug}@gmail.com' npx tsx scripts/contas-qa.ts
 ```
 
