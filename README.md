@@ -139,6 +139,19 @@ npx playwright test tests/planos --workers=1
   entre rodadas. Os testes que dependem de `APP_DATABASE_URL` (promover conta a admin
   pelo script) não rodam no staging.
 
+### Contas permanentes de QA
+
+Para validar os planos à mão, `scripts/contas-qa.ts` cria (e **não** apaga) uma empresa em
+cada situação — Semente, Raiz, Floresta e teste grátis do Floresta por promoção —, cada
+uma com um anúncio publicado. Usa o mesmo admin de QA:
+
+```bash
+API_URL=https://amazonia-api-staging.onrender.com E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... \
+E2E_ADMIN_TOTP_SECRET=... QA_EMAIL='seu.email+{slug}@gmail.com' npx tsx scripts/contas-qa.ts
+```
+
+As credenciais vão para `qa-accounts.local.json` (fora do git).
+
 ## Rodando
 
 ```bash
