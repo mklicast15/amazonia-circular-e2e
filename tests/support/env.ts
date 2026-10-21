@@ -19,3 +19,18 @@ export const APP_DATABASE_URL = process.env.APP_DATABASE_URL ?? ''
 
 // Liberação explícita para rodar contra um banco que não é local.
 export const ALLOW_REMOTE_DB = process.env.E2E_ALLOW_REMOTE_DB === '1'
+
+// Admin já existente no ambiente sob teste (ex.: staging), com o segredo TOTP do MFA.
+// Com ele, a suíte não precisa de acesso ao banco para criar admin (ver adminLogin).
+export const E2E_ADMIN = process.env.E2E_ADMIN_EMAIL
+  ? {
+      email: process.env.E2E_ADMIN_EMAIL,
+      password: process.env.E2E_ADMIN_PASSWORD ?? '',
+      totpSecret: process.env.E2E_ADMIN_TOTP_SECRET ?? '',
+    }
+  : null
+
+// Autenticação HTTP básica do site de staging (STAGING_AUTH do app). Só o frontend pede.
+export const SITE_HTTP_CREDENTIALS = process.env.SITE_HTTP_USER
+  ? { username: process.env.SITE_HTTP_USER, password: process.env.SITE_HTTP_PASSWORD ?? '' }
+  : undefined

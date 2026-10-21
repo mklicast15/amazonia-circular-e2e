@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { SITE_HTTP_CREDENTIALS } from './tests/support/env'
 
 export default defineConfig({
   testDir: './tests',
@@ -19,6 +20,8 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
+    // Staging: o site inteiro pede usuário e senha (STAGING_AUTH do app).
+    httpCredentials: SITE_HTTP_CREDENTIALS,
     actionTimeout: 8_000,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',

@@ -11,7 +11,7 @@ raiz do repositório.
 ## Convenções
 
 - **ID**: prefixo de 3-4 letras por fluxo (`CAD`, `LOG`, `PUB`, `PROP`,
-  `PAI`, `PROPR`, `PERF`, `REC`/`RS`, `PERM`) seguido de um número
+  `PAI`, `PROPR`, `PERF`, `REC`/`RS`, `PERM`, `EQP`, `PLN`) seguido de um número
   sequencial de dois dígitos. O prefixo identifica o fluxo mesmo fora de
   contexto (ex.: em relatório de execução ou mensagem de commit).
 - **Cenário**: a ação/entrada testada, em linguagem de negócio.
@@ -37,6 +37,7 @@ raiz do repositório.
 | 8 | [Conta e perfil](#8-conta-e-perfil) | `auth/perfil.spec.ts` | TC-PERF-01 a 04 |
 | 9 | [Permissões por papel](#9-permissões-por-papel) | `permissoes/papeis.spec.ts` | TC-PERM-01 a 10 |
 | 10 | [Painel — equipe](#10-painel--equipe) | `painel/equipe.spec.ts` | TC-EQP-01 a 03 |
+| 11 | [Planos pagos](#11-planos-pagos) | `planos/planos.spec.ts` | TC-PLN-01 a 10 |
 
 Total: **41 casos** cobrindo 10 fluxos.
 
@@ -187,6 +188,29 @@ membros.
 | TC-EQP-02 | Membro que não é o responsável abre a aba Equipe | Aviso de que só o responsável convida/remove; sem botões de convite/remoção; API recusa gerar convite (403) |
 | TC-EQP-03 | Membro removido entra no painel | Aviso bloqueante "Você foi removido da empresa"; API responde 403 `REMOVED_FROM_COMPANY`, mas libera exportar os dados; excluir a conta pelo aviso funciona |
 
+## 11. Planos pagos
+
+`tests/planos/planos.spec.ts`
+
+Fase 1 dos planos (Semente R$ 0 / Raiz R$ 99 / Floresta R$ 199), limites conferidos no
+servidor, promoções e queda de plano. Os casos rodam **em série**, como uma história só,
+com duas empresas e um admin: no staging o login/cadastro é limitado a 10 por IP a cada
+15 min, e essa ordem gasta poucas chamadas de autenticação. Se um caso falha, os
+seguintes não rodam.
+
+| ID | Cenário | Resultado esperado |
+|---|---|---|
+| TC-PLN-01 | Visitante abre /planos (desktop e 390 px) | 3 cards (Grátis, R$ 99, R$ 199), 3 recursos "Em breve"; sem rolagem horizontal no celular |
+| TC-PLN-02 | Empresa nova abre "Meu plano" | Semente; 0 de 5 anúncios, 1 de 2 membros, capa + 3 fotos; sem selo Parceiro |
+| TC-PLN-03 | Com 5 anúncios ativos, envia um rascunho para aprovação | Janela "Limite do plano Semente" com Raiz e Floresta; "Ver planos" abre em nova aba; rascunho continua rascunho |
+| TC-PLN-04 | Com 1 membro e 1 convite aberto, gera outro convite | Janela de planos sobre "membros na equipe" |
+| TC-PLN-05 | Admin ativa o Raiz pelo detalhe da empresa | Empresa vê Raiz, "Assinatura do Raiz válida até…", selo Parceiro e 5 de 20 anúncios |
+| TC-PLN-06 | Empresa grátis envia um anúncio mais novo que o do parceiro | Na fila de moderação, o anúncio do parceiro (com selo) vem antes |
+| TC-PLN-07 | Comprador abre um anúncio publicado do parceiro | Selo Parceiro no painel do vendedor |
+| TC-PLN-08 | Admin cria teste grátis do Floresta para a outra empresa (empresas escolhidas) | Promoção ativa; empresa vê "Teste grátis do Floresta até…"; em /planos o card Floresta diz "Em teste grátis" e oferece "Quero o Floresta" |
+| TC-PLN-09 | Admin encerra e revoga a promoção | Detalhe mostra "revogado em" e "Encerrada"; empresa volta ao Semente |
+| TC-PLN-10 | Empresa no Raiz com 6 publicados volta ao Semente | O anúncio mais recente fica pausado, os 5 mais antigos seguem publicados, painel mostra 5 de 5; auditoria registra "Plano rebaixado" pelo "Sistema" |
+
 ---
 
 ## Limitações conhecidas
@@ -201,3 +225,9 @@ membros.
   antiga) e removida manualmente.
 - Ver seção "Recuperação de senha" (item 3) para a limitação do fluxo de
   troca de senha.
+- Upload de imagens (TC-PUB-01, TC-PERM-01) precisa do Cloudinary configurado na
+  API: sem ele o `/uploads` responde 503 e esses dois casos falham. Localmente, rode a
+  API com as variáveis `CLOUDINARY_*` de desenvolvimento; no staging já existem.
+- No staging o limite de login/cadastro (10 por IP a cada 15 min) vale de verdade — o
+  IP falso do `X-Forwarded-For` só funciona localmente. Rode lá só o necessário
+  (ex.: `tests/planos`) e espere 15 min entre rodadas.
