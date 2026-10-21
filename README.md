@@ -142,6 +142,20 @@ npx playwright test tests/planos --workers=1
   entre rodadas. Os testes que dependem de `APP_DATABASE_URL` (promover conta a admin
   pelo script) não rodam no staging.
 
+### Regressão completa preservando os dados
+
+```bash
+scripts/regressao-staging.sh
+```
+
+Roda a suíte inteira no staging com `E2E_KEEP_DATA=1` (no `.env.staging`): **nada é apagado**.
+Cada conta criada fica registrada, com a senha, em `kept-accounts.local.json` (fora do git), para
+entrar e inspecionar depois. Precisa também de `APP_DATABASE_URL` (banco do staging),
+`E2E_ALLOW_REMOTE_DB=1` e a `MFA_ENCRYPTION_KEY` do staging: o TC-PERM-10 promove uma conta a
+admin pelo script do app (e a devolve para comum no fim) e os testes de avaliação marcam o e-mail
+do comprador como confirmado. Demora (~2 h): a suíte espera a janela do limite de login zerar
+sozinha (`tests/support/authBudget.ts`). O TC-LOG-05 é pulado lá — precisa de IPs diferentes.
+
 ### Contas permanentes de QA
 
 Para validar os planos à mão, `scripts/contas-qa.ts` cria (e **não** apaga) uma empresa em

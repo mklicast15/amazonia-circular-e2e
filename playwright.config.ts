@@ -12,13 +12,15 @@ export default defineConfig({
   // arquivos é seguro porque cada teste usa contas descartáveis próprias,
   // mas mantemos poucos workers para não martelar a API local.
   fullyParallel: false,
-  workers: process.env.CI ? 1 : 2,
+  // Staging: 1 worker — o limite de login é por IP e o controle de saldo (authBudget) é por processo.
+  workers: process.env.CI || remote ? 1 : 2,
   forbidOnly: !!process.env.CI,
   // O SSR do modo dev do app ocasionalmente sofre um hydration mismatch e
   // remonta a página no cliente (ver gotoReady em tests/support/fixtures.ts);
   // um retry absorve esse flake conhecido sem mascarar falhas reais.
   retries: process.env.CI ? 1 : 0,
-  timeout: remote ? 180_000 : 60_000,
+  // Remoto: cabe uma espera da janela do limite de login (15 min) dentro do teste.
+  timeout: remote ? 20 * 60_000 : 60_000,
   expect: { timeout: remote ? 20_000 : 8_000 },
   reporter: [['list'], ['html', { open: 'never' }]],
 

@@ -34,3 +34,10 @@ export const E2E_ADMIN = process.env.E2E_ADMIN_EMAIL
 export const SITE_HTTP_CREDENTIALS = process.env.SITE_HTTP_USER
   ? { username: process.env.SITE_HTTP_USER, password: process.env.SITE_HTTP_PASSWORD ?? '' }
   : undefined
+
+// Ambiente remoto (staging): o limite de login/cadastro vale de verdade e tudo é mais lento.
+export const REMOTE = !!process.env.BASE_URL && !/localhost|127\.0\.0\.1/.test(process.env.BASE_URL)
+
+// Regressão que preserva os dados: contas e anúncios criados pelos testes NÃO são apagados
+// no fim. As contas ficam registradas (com senha) em kept-accounts.local.json, fora do git.
+export const KEEP_DATA = process.env.E2E_KEEP_DATA === '1'

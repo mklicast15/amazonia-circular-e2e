@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
-import { API_URL } from '../support/env'
+import { API_URL, REMOTE } from '../support/env'
+import { reserveAuth } from '../support/authBudget'
 import { acceptCookieConsent, expect, gotoReady, test } from '../support/fixtures'
 
 async function attemptLogin(page: Page, email: string, password: string) {
@@ -35,6 +36,7 @@ test.describe('Login', () => {
   })
 
   test('TC-LOG-03: bloqueia a conta após 5 tentativas de senha errada', async ({ page, account }) => {
+    await reserveAuth(6, 'TC-LOG-03') // 6 tentativas pela tela, na mesma janela do limite
     await gotoReady(page, '/login')
     // Tentativas 1-5: senha errada normal — a 5ª é a que ativa o bloqueio.
     for (let i = 0; i < 5; i++) {
@@ -57,6 +59,9 @@ test.describe('Login', () => {
   // Quem erra a senha bloqueia só a si mesmo (e-mail + IP), não o dono da
   // conta — antes, 5 erros de qualquer pessoa travavam a conta (JardelS-Lima/amazoniacircular#199).
   test('TC-LOG-05: tentativas erradas de outra origem não bloqueiam o dono da conta', async ({ page, account, newActor }) => {
+    // Precisa de dois IPs de cliente; só o X-Forwarded-For local simula isso (no staging tudo
+    // sai do mesmo IP, e o "atacante" bloquearia o próprio dono).
+    test.skip(REMOTE, 'precisa de IPs de cliente diferentes — só roda localmente')
     const attacker = await newActor() // navegador com outro IP de cliente
     for (let i = 0; i < 6; i++) {
       await attacker.api.post(`${API_URL}/auth/login`, { data: { email: account.email, password: 'SenhaErrada999' } })

@@ -1,7 +1,9 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { request, type APIRequestContext } from '@playwright/test'
-import { ALLOW_REMOTE_DB, API_URL, APP_DATABASE_URL, APP_SERVER_PATH } from './env'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { request, type APIRequestContext, type APIResponse } from '@playwright/test'
+import { ALLOW_REMOTE_DB, API_URL, APP_DATABASE_URL, APP_SERVER_PATH, E2E_ADMIN, KEEP_DATA } from './env'
+import { noteAuthResponse, reserveAuth, waitForRateLimit } from './authBudget'
 
 export interface TestAccount {
   email: string
@@ -77,21 +79,44 @@ export function buildAccount(overrides: Partial<TestAccount> = {}): TestAccount 
   }
 }
 
+// POST numa rota de autenticação (login, cadastro, MFA): respeita o limite de login da
+// API (ver authBudget.ts) e, num 429, espera a janela zerar e tenta de novo uma vez.
+// `reserve: false` quando quem chama já reservou o saldo (ex.: login + MFA juntos).
+export async function authPost(api: APIRequestContext, path: string, data: unknown, label = path, reserve = true): Promise<APIResponse> {
+  if (reserve) await reserveAuth(1, label)
+  let res = await api.post(`${API_URL}${path}`, { data })
+  if (await waitForRateLimit(res)) res = await api.post(`${API_URL}${path}`, { data })
+  await noteAuthResponse(res)
+  return res
+}
+
+const KEPT_FILE = 'kept-accounts.local.json'
+
+// Modo E2E_KEEP_DATA: guarda e-mail e senha de cada conta criada, para inspecionar depois.
+function rememberAccount(account: TestAccount): void {
+  const list = existsSync(KEPT_FILE) ? JSON.parse(readFileSync(KEPT_FILE, 'utf8')) : []
+  list.push({ email: account.email, senha: account.password, empresa: account.company, nome: account.name, criadaEm: new Date().toISOString() })
+  writeFileSync(KEPT_FILE, JSON.stringify(list, null, 2), { mode: 0o600 })
+}
+
 // Registra a conta direto na API. O registro já cria a sessão, então o
 // contexto `api` passado fica autenticado — se for o `context.request` de um
 // BrowserContext, o navegador também fica.
 export async function apiRegister(api: APIRequestContext, account: TestAccount): Promise<SessionState> {
-  const res = await api.post(`${API_URL}/auth/register`, { data: account })
+  const res = await authPost(api, '/auth/register', account, 'cadastro')
   if (!res.ok()) {
     throw new Error(`POST /auth/register falhou (${res.status()}): ${await res.text()}`)
   }
+  if (KEEP_DATA) rememberAccount(account)
   return api.storageState()
 }
 
 // Apaga a conta da sessão salva (endpoint de autoexclusão LGPD). Apaga em
 // cascata anúncios/propostas/equipe da conta. 401/403 são tolerados: o
 // próprio teste pode já ter excluído a conta (TC-PERF-04).
+// Com E2E_KEEP_DATA=1 não apaga nada (regressão que preserva os dados de teste).
 export async function apiDeleteAccount(session: SessionState): Promise<void> {
+  if (KEEP_DATA) return
   const ctx = await request.newContext({ storageState: session, extraHTTPHeaders: clientIpHeaders() })
   try {
     const res = await ctx.delete(`${API_URL}/me/account`)
@@ -187,14 +212,43 @@ export function totp(secretBase32: string, now = Date.now()): string {
 // Promove a conta e faz o login de admin completo (senha → código TOTP) no
 // contexto `api`. O /admin só aceita sessões que passaram pelo MFA, então a
 // sessão aberta no cadastro não serve. Devolve o novo snapshot da sessão.
+//
+// Com E2E_ADMIN_* (ex.: staging) não promove nada: o contexto entra como o admin de QA
+// existente. A conta `account` continua uma conta comum — os testes de admin só precisam
+// de uma sessão de admin agindo sobre as outras contas.
 export async function loginAsAdmin(api: APIRequestContext, account: TestAccount): Promise<SessionState> {
-  const secret = promoteToAdmin(account.email, account.password)
-  const login = await api.post(`${API_URL}/auth/login`, { data: { email: account.email, password: account.password } })
+  const { email, password, secret } = E2E_ADMIN
+    ? { email: E2E_ADMIN.email, password: E2E_ADMIN.password, secret: E2E_ADMIN.totpSecret }
+    : { email: account.email, password: account.password, secret: promoteToAdmin(account.email, account.password) }
+  // As duas chamadas na mesma janela: o token do desafio MFA expira se ficar esperando no meio.
+  await reserveAuth(2, 'login de admin')
+  const login = await authPost(api, '/auth/login', { email, password }, 'login de admin', false)
   const body = await login.json()
   if (!body.mfaRequired) throw new Error(`login de admin sem desafio MFA (${login.status()}): ${JSON.stringify(body)}`)
-  const verify = await api.post(`${API_URL}/auth/mfa/verify`, { data: { mfaToken: body.mfaToken, code: totp(secret) } })
+  const verify = await authPost(api, '/auth/mfa/verify', { mfaToken: body.mfaToken, code: totp(secret) }, 'MFA do admin', false)
   if (!verify.ok()) throw new Error(`código do MFA recusado (${verify.status()}): ${await verify.text()}`)
   return api.storageState()
+}
+
+// Marca o e-mail da conta como confirmado direto no banco (o staging não envia e-mail).
+// Usa o mesmo banco e a mesma trava de APP_DATABASE_URL do promoteToAdmin.
+export function markEmailVerified(email: string): void {
+  execFileSync('npx', ['prisma', 'db', 'execute', '--stdin', '--url', appDatabaseUrl()], {
+    cwd: APP_SERVER_PATH,
+    stdio: 'pipe',
+    input: `UPDATE "User" SET "emailVerified" = true WHERE email = '${email.toLowerCase().replace(/'/g, "''")}';`,
+  })
+}
+
+// Volta uma conta promovida a ADMIN para comum, pela mesma rota do painel admin (a sessão
+// `admin` precisa ter passado pelo MFA). Usado no modo que preserva os dados: a conta
+// fica, o privilégio não.
+export async function demoteToSeller(admin: APIRequestContext, email: string): Promise<void> {
+  const users = (await (await admin.get(`${API_URL}/admin/users`)).json()).users as Array<{ id: string; email: string }>
+  const user = users.find((u) => u.email === email.toLowerCase())
+  if (!user) throw new Error(`conta ${email} não encontrada para rebaixar`)
+  const res = await admin.patch(`${API_URL}/admin/users/${user.id}/role`, { data: { role: 'SELLER' } })
+  if (!res.ok()) throw new Error(`rebaixar ${email} falhou (${res.status()}): ${await res.text()}`)
 }
 
 // Gera um código de convite da empresa da sessão `api` (só o dono pode).
