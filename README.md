@@ -114,6 +114,47 @@ APP_SERVER_PATH=/caminho/para/amazoniacircular/server APP_DATABASE_URL=... npm t
 
 Também dá para sobrescrever `BASE_URL` (frontend) e `API_URL` (backend).
 
+A `MFA_ENCRYPTION_KEY` do terminal que roda a suíte precisa ser a mesma da API: o
+script de admin grava o segredo do MFA cifrado com ela (e, sem a variável, usaria a do
+`server/.env` do app). Chaves diferentes fazem o login de admin dar 500.
+
+## Rodando no staging (QA)
+
+O staging é o ambiente da branch `develop` do app. A suíte roda lá sem acesso ao banco:
+o admin é uma conta já existente, informada por variáveis de ambiente.
+
+```bash
+BASE_URL=https://staging.amazoniacircular.com.br \
+API_URL=https://api-staging.amazoniacircular.com.br \
+SITE_HTTP_USER=<usuário do STAGING_AUTH> SITE_HTTP_PASSWORD=<senha> \
+E2E_ADMIN_EMAIL=<admin de QA> E2E_ADMIN_PASSWORD=<senha> E2E_ADMIN_TOTP_SECRET=<segredo do MFA> \
+npx playwright test tests/planos --workers=1
+```
+
+- `API_URL` precisa ser o mesmo endereço que o site de staging usa
+  (`api-staging.amazoniacircular.com.br`, o `VITE_API_URL` do front), não o `*.onrender.com`:
+  a sessão aberta pela API vale para o domínio dela, e o site só a envia para esse endereço.
+- `SITE_HTTP_USER/PASSWORD`: um par do `STAGING_AUTH` (o site inteiro pede senha).
+- `E2E_ADMIN_*`: admin de QA. Para criar um, rode no repo do app, com o banco e a
+  `MFA_ENCRYPTION_KEY` do staging: `npx tsx src/scripts/createAdmin.ts <e-mail> <senha>` —
+  o segredo do MFA sai na linha "Entrada manual".
+- O login/cadastro é limitado a 10 por IP a cada 15 min: rode só o necessário e espere
+  entre rodadas. Os testes que dependem de `APP_DATABASE_URL` (promover conta a admin
+  pelo script) não rodam no staging.
+
+### Contas permanentes de QA
+
+Para validar os planos à mão, `scripts/contas-qa.ts` cria (e **não** apaga) uma empresa em
+cada situação — Semente, Raiz, Floresta e teste grátis do Floresta por promoção —, cada
+uma com um anúncio publicado. Usa o mesmo admin de QA:
+
+```bash
+API_URL=https://api-staging.amazoniacircular.com.br E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... \
+E2E_ADMIN_TOTP_SECRET=... QA_EMAIL='seu.email+{slug}@gmail.com' npx tsx scripts/contas-qa.ts
+```
+
+As credenciais vão para `qa-accounts.local.json` (fora do git).
+
 ## Rodando
 
 ```bash

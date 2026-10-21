@@ -136,13 +136,20 @@ export async function apiCreateListing(
 // atual intactas. O backend relê o papel do banco a cada requisição
 // (requireRole), então a sessão já aberta passa a valer como admin sem
 // precisar de novo login (que exigiria MFA).
-export function promoteToAdmin(email: string, password: string): void {
-  execFileSync('npx', ['tsx', 'src/scripts/createAdmin.ts', email, password], {
+//
+// Desde o fix de "trust on first use" do app (#228), o script já ATIVA o MFA e
+// imprime o segredo TOTP uma única vez ("Entrada manual: <segredo>"); o primeiro
+// login já cai no /auth/mfa/verify. Devolve esse segredo.
+export function promoteToAdmin(email: string, password: string): string {
+  const out = execFileSync('npx', ['tsx', 'src/scripts/createAdmin.ts', email, password], {
     cwd: APP_SERVER_PATH,
     stdio: 'pipe',
     // DATABASE_URL explícito: o dotenv do app não sobrescreve variáveis já definidas.
     env: { ...process.env, DATABASE_URL: appDatabaseUrl() },
-  })
+  }).toString()
+  const secret = out.match(/Entrada manual: ([A-Z2-7]+)/)?.[1]
+  if (!secret) throw new Error(`createAdmin.ts não imprimiu o segredo do MFA:\n${out}`)
+  return secret
 }
 
 // O script roda fora da API, então precisa receber o mesmo banco dela. Sem
@@ -177,18 +184,16 @@ export function totp(secretBase32: string, now = Date.now()): string {
   return String(code).padStart(6, '0')
 }
 
-// Promove a conta e faz o login de admin completo (senha → configuração do MFA →
-// código TOTP) no contexto `api`. O /admin só aceita sessões que passaram pelo MFA,
-// então a sessão aberta no cadastro não serve. Devolve o novo snapshot da sessão.
+// Promove a conta e faz o login de admin completo (senha → código TOTP) no
+// contexto `api`. O /admin só aceita sessões que passaram pelo MFA, então a
+// sessão aberta no cadastro não serve. Devolve o novo snapshot da sessão.
 export async function loginAsAdmin(api: APIRequestContext, account: TestAccount): Promise<SessionState> {
-  promoteToAdmin(account.email, account.password)
+  const secret = promoteToAdmin(account.email, account.password)
   const login = await api.post(`${API_URL}/auth/login`, { data: { email: account.email, password: account.password } })
-  const { mfaToken } = await login.json()
-  if (!mfaToken) throw new Error(`login de admin sem desafio MFA (${login.status()}): ${await login.text()}`)
-  const setup = await api.post(`${API_URL}/auth/mfa/setup`, { data: { mfaToken } })
-  const { secret } = await setup.json()
-  const confirm = await api.post(`${API_URL}/auth/mfa/confirm`, { data: { mfaToken, code: totp(secret) } })
-  if (!confirm.ok()) throw new Error(`confirmação do MFA falhou (${confirm.status()}): ${await confirm.text()}`)
+  const body = await login.json()
+  if (!body.mfaRequired) throw new Error(`login de admin sem desafio MFA (${login.status()}): ${JSON.stringify(body)}`)
+  const verify = await api.post(`${API_URL}/auth/mfa/verify`, { data: { mfaToken: body.mfaToken, code: totp(secret) } })
+  if (!verify.ok()) throw new Error(`código do MFA recusado (${verify.status()}): ${await verify.text()}`)
   return api.storageState()
 }
 
@@ -201,9 +206,15 @@ export async function apiCreateInvite(api: APIRequestContext): Promise<string> {
 
 // Aprova um anúncio pendente pela mesma rota que a UI de moderação usa.
 // `admin` precisa ser uma sessão de admin com MFA (ver fixture `moderator`).
+// A moderação exige `reviewedUpdatedAt` (a versão revisada): o admin busca o anúncio
+// na fila antes, como a tela faz.
 export async function apiApproveListing(admin: APIRequestContext, id: number): Promise<void> {
+  const queue = await admin.get(`${API_URL}/admin/listings?status=pending`)
+  const pending = (await queue.json()).listings as Array<{ id: number; updatedAt: string }>
+  const listing = pending.find((l) => l.id === id)
+  if (!listing) throw new Error(`anúncio ${id} não está na fila de moderação`)
   const res = await admin.patch(`${API_URL}/admin/listings/${id}/moderate`, {
-    data: { status: 'published' },
+    data: { status: 'published', reviewedUpdatedAt: listing.updatedAt },
   })
   if (!res.ok()) {
     throw new Error(`PATCH /admin/listings/${id}/moderate falhou (${res.status()}): ${await res.text()}`)
