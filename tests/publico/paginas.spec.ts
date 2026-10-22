@@ -33,10 +33,15 @@ test.describe('Páginas públicas', () => {
 
   test('TC-PUBL-03: o menu do topo leva a cada página', async ({ page }) => {
     await gotoReady(page, '/')
-    for (const [label, path] of [['Sobre nós', '/sobre'], ['Planos', '/planos'], ['Contato', '/contato']] as const) {
+    for (const [label, path] of [['Sobre nós', '/sobre'], ['Contato', '/contato']] as const) {
       await page.locator('header').getByRole('link', { name: label, exact: true }).click()
       await expect(page).toHaveURL((url) => url.pathname === path)
     }
+    // Planos saiu do menu por enquanto: a página é aberta pelo botão da página inicial.
+    await expect(page.locator('header').getByRole('link', { name: 'Planos', exact: true })).toHaveCount(0)
+    await gotoReady(page, '/')
+    await page.getByRole('link', { name: 'Conheça nossos planos' }).click()
+    await expect(page).toHaveURL((url) => url.pathname === '/planos')
   })
 
   test('TC-PUBL-04: o contato oferece o e-mail da equipe', async ({ page }) => {
