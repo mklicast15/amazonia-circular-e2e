@@ -6,3 +6,4 @@ playwright/.cache/
 qa-accounts.local.json
 .env.staging
 *.local.json
+/playwright-report-admin/
