@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
-import { apiCreateListing, loginAsAdmin, promoteToAdmin, uniqueStamp } from '../support/api'
+import { apiCreateListing, demoteToSeller, loginAsAdmin, promoteToAdmin, uniqueStamp } from '../support/api'
+import { KEEP_DATA } from '../support/env'
 import { expect, gotoReady, pickOption, row, test, type Actor } from '../support/fixtures'
 
 async function expectBlockedFromAdmin(page: Page) {
@@ -55,12 +56,17 @@ test.describe('Permissões por papel', () => {
   test.describe('Conta promovida a ADMIN', () => {
     // O /admin exige uma sessão que passou pelo MFA; a sessão aberta antes da
     // promoção não serve (JardelS-Lima/amazoniacircular#195).
-    test('TC-PERM-10: sessão anterior à promoção é mandada ao login com MFA', async ({ page, account }) => {
+    test('TC-PERM-10: sessão anterior à promoção é mandada ao login com MFA', async ({ page, account, moderator }) => {
       promoteToAdmin(account.email, account.password)
-      await gotoReady(page, '/admin')
+      try {
+        await gotoReady(page, '/admin')
 
-      await expect(page).toHaveURL((url) => url.pathname === '/login')
-      await expect(page.locator('.toast', { hasText: 'Faça login novamente para acessar a administração.' })).toBeVisible()
+        await expect(page).toHaveURL((url) => url.pathname === '/login')
+        await expect(page.locator('.toast', { hasText: 'Faça login novamente para acessar a administração.' })).toBeVisible()
+      } finally {
+        // Preservando os dados, a conta fica — mas não como ADMIN.
+        if (KEEP_DATA) await demoteToSeller(moderator, account.email)
+      }
     })
   })
 

@@ -11,7 +11,7 @@ raiz do repositório.
 ## Convenções
 
 - **ID**: prefixo de 3-4 letras por fluxo (`CAD`, `LOG`, `PUB`, `PROP`,
-  `PAI`, `PROPR`, `PERF`, `REC`/`RS`, `PERM`, `EQP`, `PLN`) seguido de um número
+  `PAI`, `PROPR`, `PERF`, `REC`/`RS`, `PERM`, `EQP`, `PLN`, `CAT`, `ADM`, `AVA`, `PUBL`) seguido de um número
   sequencial de dois dígitos. O prefixo identifica o fluxo mesmo fora de
   contexto (ex.: em relatório de execução ou mensagem de commit).
 - **Cenário**: a ação/entrada testada, em linguagem de negócio.
@@ -38,6 +38,11 @@ raiz do repositório.
 | 9 | [Permissões por papel](#9-permissões-por-papel) | `permissoes/papeis.spec.ts` | TC-PERM-01 a 10 |
 | 10 | [Painel — equipe](#10-painel--equipe) | `painel/equipe.spec.ts` | TC-EQP-01 a 03 |
 | 11 | [Planos pagos](#11-planos-pagos) | `planos/planos.spec.ts` | TC-PLN-01 a 10 |
+| 12 | [Marketplace — catálogo](#12-marketplace--catálogo) | `marketplace/catalogo.spec.ts` | TC-CAT-01 a 09 |
+| 13 | [Admin — paginação](#13-admin--paginação) | `admin/paginacao.spec.ts` | TC-ADM-01 a 04 |
+| 14 | [Avaliar o vendedor](#14-avaliar-o-vendedor) | `listings/avaliacao.spec.ts` | TC-AVA-01 a 03 |
+| 15 | [Páginas públicas](#15-páginas-públicas) | `publico/paginas.spec.ts` | TC-PUBL-01 a 04 |
+| — | Editar anúncio (painel) | `painel/editar-anuncio.spec.ts` | TC-PAI-04 |
 
 Total: **41 casos** cobrindo 10 fluxos.
 
@@ -210,6 +215,68 @@ seguintes não rodam.
 | TC-PLN-08 | Admin cria teste grátis do Floresta para a outra empresa (empresas escolhidas) | Promoção ativa; empresa vê "Teste grátis do Floresta até…"; em /planos o card Floresta diz "Em teste grátis" e oferece "Quero o Floresta" |
 | TC-PLN-09 | Admin encerra e revoga a promoção | Detalhe mostra "revogado em" e "Encerrada"; empresa volta ao Semente |
 | TC-PLN-10 | Empresa no Raiz com 6 publicados volta ao Semente | O anúncio mais recente fica pausado, os 5 mais antigos seguem publicados, painel mostra 5 de 5; auditoria registra "Plano rebaixado" pelo "Sistema" |
+
+## 12. Marketplace — catálogo
+
+`tests/marketplace/catalogo.spec.ts`
+
+Sobre um catálogo fixo de QA (`support/catalog.ts`): 22 anúncios publicados de uma empresa no
+Floresta, com o marcador `CatalogoQA` no título. É criado na primeira rodada e reaproveitado
+nas seguintes. As contagens esperadas saem dos dados reais da API.
+
+| ID | Cenário | Resultado esperado |
+|---|---|---|
+| TC-CAT-01 | Busca o catálogo e navega pelo paginador (10 por página) | 1–10, 11–20, última página com o resto; nada repetido entre páginas; botões de início/fim desabilitados nas pontas |
+| TC-CAT-02 | Busca um termo sem resultado | "Nenhum anúncio encontrado"; "limpar todos" volta ao total anterior |
+| TC-CAT-03 | Na página 2, filtra por tipo PEAD | Volta à 1ª página; só cards PEAD; chip do filtro ativo remove o filtro |
+| TC-CAT-04 | Filtra por condição "Contaminado" | Só cards contaminados, na quantidade certa |
+| TC-CAT-05 | Informa quantidade mínima | Só anúncios com kg ≥ mínimo; chip "mín. X kg" |
+| TC-CAT-06 | Ordena por "Maior quantidade" | Os 10 maiores lotes, em ordem decrescente |
+| TC-CAT-07 | Alterna grade/lista | Classe de lista aplicada e removida |
+| TC-CAT-08 | Abre a aba Vendedores | Empresa do catálogo com o selo Parceiro |
+| TC-CAT-09 | Clica num card | Abre /products/:id com o mesmo título e o vendedor |
+
+## 13. Admin — paginação
+
+`tests/admin/paginacao.spec.ts`
+
+Tabelas do /admin paginam no navegador (25 ou 50 por página); a auditoria busca a API de 100 em
+100. Os casos que dependem do volume de dados do ambiente pulam com o motivo quando não há dados
+suficientes (no staging, rodam por último — ver `scripts/regressao-staging.sh`).
+
+| ID | Cenário | Resultado esperado |
+|---|---|---|
+| TC-ADM-01 | Moderação, filtro "Publicado" | 1–25 de N; próxima página 26–…; volta; com 50 por página mostra até 50 |
+| TC-ADM-02 | Auditoria, última página e filtro "Logins e cadastros" | Faixa final correta; só logins/cadastros no filtro |
+| TC-ADM-03 | Auditoria com mais de 100 eventos | "Carregar eventos mais antigos" traz além dos 100 |
+| TC-ADM-04 | Usuários com mais de 25 | 1–25 de N e página seguinte |
+
+## 14. Avaliar o vendedor
+
+`tests/listings/avaliacao.spec.ts`
+
+Só avalia quem confirmou o e-mail e depois que o vendedor respondeu uma proposta sua. A confirmação
+de e-mail é marcada direto no banco (o ambiente de teste não envia e-mail).
+
+| ID | Cenário | Resultado esperado |
+|---|---|---|
+| TC-AVA-01 | Comprador confirmado, proposta respondida, avalia com 4 estrelas | "Avaliação enviada. Obrigado!"; o anúncio mostra 1 avaliação do vendedor |
+| TC-AVA-02 | Comprador sem e-mail confirmado tenta avaliar | "Confirme seu e-mail para avaliar empresas." |
+| TC-AVA-03 | Comprador confirmado, proposta ainda sem resposta | "Você só pode avaliar após o vendedor responder a uma proposta sua." |
+
+## 15. Páginas públicas
+
+`tests/publico/paginas.spec.ts`
+
+| ID | Cenário | Resultado esperado |
+|---|---|---|
+| TC-PUBL-01 | Abre /sobre, /solucoes, /materiais, /blog, /contato, /privacidade, /planos | Título certo; nenhum erro de JavaScript (o 401 do visitante no /auth/me não conta) |
+| TC-PUBL-02 | Abre uma rota que não existe | "Página não encontrada" |
+| TC-PUBL-03 | Usa o menu do topo | Sobre nós, Planos e Contato levam às páginas certas |
+| TC-PUBL-04 | Abre /contato | Link mailto para o e-mail da equipe |
+
+Também no painel: **TC-PAI-04** (`painel/editar-anuncio.spec.ts`) — editar um anúncio publicado
+pelo assistente salva e o devolve para "Em análise".
 
 ---
 

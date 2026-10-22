@@ -17,7 +17,16 @@ import {
   type SessionState,
   type TestAccount,
 } from './api'
-import { API_URL, E2E_ADMIN, SITE_HTTP_CREDENTIALS } from './env'
+import { API_URL, E2E_ADMIN, REMOTE, SITE_HTTP_CREDENTIALS } from './env'
+import { noteAuthResponse, reserveAuth } from './authBudget'
+
+// Toda resposta de /auth/* vinda do navegador atualiza o saldo do limite de login
+// (ver authBudget.ts) — logins e cadastros feitos pela tela também contam.
+export function watchAuthLimit(context: BrowserContext): void {
+  context.on('response', (res) => {
+    if (res.url().startsWith(`${API_URL}/auth/`)) void noteAuthResponse(res)
+  })
+}
 
 // Um usuário com navegador próprio (BrowserContext isolado: cookies,
 // storage e sessão separados). Usado nos fluxos com mais de um ator
@@ -54,8 +63,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(clientIpHeaders())
   },
 
-  context: async ({ context, baseURL }, use) => {
+  context: async ({ context, baseURL }, use, testInfo) => {
     await acceptCookieConsent(context, baseURL!)
+    watchAuthLimit(context)
+    // Os testes de tests/auth/ logam/cadastram pela tela: reserva saldo antes de começar.
+    if (REMOTE && testInfo.file.includes(`${'/'}auth${'/'}`)) await reserveAuth(3, testInfo.title)
     await use(context)
   },
 
@@ -73,6 +85,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(async (overrides = {}) => {
       const context = await browser.newContext({ baseURL, httpCredentials: SITE_HTTP_CREDENTIALS, extraHTTPHeaders: clientIpHeaders() })
       await acceptCookieConsent(context, baseURL!)
+      watchAuthLimit(context)
       const account = buildAccount(overrides)
       const session = await apiRegister(context.request, account)
       const actor = { account, context, page: await context.newPage(), api: context.request }
@@ -89,10 +102,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     async ({ playwright }, use) => {
       const api = await playwright.request.newContext({ extraHTTPHeaders: clientIpHeaders() })
       const account = buildAccount({ name: 'Moderador Teste E2E' })
-      const session = await apiRegister(api, account)
+      // Com o admin de QA (E2E_ADMIN_*) não precisa de conta própria.
+      const session = E2E_ADMIN ? null : await apiRegister(api, account)
       await loginAsAdmin(api, account)
       await use(api)
-      await apiDeleteAccount(session)
+      if (session) await apiDeleteAccount(session)
       await api.dispose()
     },
     { scope: 'worker' },
@@ -109,14 +123,11 @@ export { expect }
 export async function adminLogin(browser: Browser, baseURL: string) {
   const context = await browser.newContext({ baseURL, httpCredentials: SITE_HTTP_CREDENTIALS, extraHTTPHeaders: clientIpHeaders() })
   await acceptCookieConsent(context, baseURL)
+  watchAuthLimit(context)
   const api = context.request
   let cleanup = async () => { await context.close() }
   if (E2E_ADMIN) {
-    const login = await api.post(`${API_URL}/auth/login`, { data: { email: E2E_ADMIN.email, password: E2E_ADMIN.password } })
-    const body = await login.json()
-    if (!body.mfaRequired) throw new Error(`login do admin E2E sem desafio MFA (${login.status()}): ${JSON.stringify(body)}`)
-    const verify = await api.post(`${API_URL}/auth/mfa/verify`, { data: { mfaToken: body.mfaToken, code: totp(E2E_ADMIN.totpSecret) } })
-    if (!verify.ok()) throw new Error(`código do MFA do admin E2E recusado (${verify.status()}): ${await verify.text()}`)
+    await loginAsAdmin(api, buildAccount())
   } else {
     const account = buildAccount({ name: 'Admin Teste E2E' })
     const session = await apiRegister(api, account)
