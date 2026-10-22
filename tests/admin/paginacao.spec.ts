@@ -60,10 +60,10 @@ test.describe.serial('Admin — paginação das tabelas', () => {
 
     // "Logins e cadastros" só mostra essas duas ações.
     await pickOption(page, page.getByRole('button', { name: 'Tipo de evento' }), 'Logins e cadastros')
-    await expect(page.locator('.admin-table tbody tr').first()).toBeVisible()
-    for (const action of await page.locator('.admin-table tbody tr td:nth-child(3)').allInnerTexts()) {
-      expect(['Login realizado', 'Cadastro realizado']).toContain(action)
-    }
+    // O filtro vai ao servidor: as linhas antigas ficam na tela até a resposta chegar.
+    const actions = page.locator('.admin-table tbody tr td:nth-child(3)')
+    await expect(actions.filter({ hasNotText: /^(Login realizado|Cadastro realizado)$/ })).toHaveCount(0)
+    await expect(actions.first()).toBeVisible()
   })
 
   test('TC-ADM-03: auditoria busca os eventos mais antigos além dos 100 primeiros', async () => {

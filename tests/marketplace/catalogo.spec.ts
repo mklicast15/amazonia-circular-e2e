@@ -36,6 +36,8 @@ test.describe('Marketplace — catálogo', () => {
     await page.getByRole('button', { name: 'Próxima página' }).click()
     await expect(paginatorCount(page)).toHaveText(`11–${Math.min(20, n)} de ${n}`)
     await expect(cards(page)).toHaveCount(Math.min(10, n - 10))
+    // O contador muda antes de a página 2 chegar da API: espera os cards trocarem.
+    await expect(page.locator('.listing-card-title').first()).not.toHaveText(firstPageTitles[0])
     const secondPageTitles = await page.locator('.listing-card-title').allInnerTexts()
     expect(secondPageTitles.filter((t) => firstPageTitles.includes(t))).toEqual([]) // nada repetido
 

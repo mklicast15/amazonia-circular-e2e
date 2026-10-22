@@ -1,6 +1,8 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 import { request, type APIRequestContext, type APIResponse } from '@playwright/test'
 import { ALLOW_REMOTE_DB, API_URL, APP_DATABASE_URL, APP_SERVER_PATH, E2E_ADMIN, KEEP_DATA } from './env'
 import { noteAuthResponse, reserveAuth, waitForRateLimit } from './authBudget'
@@ -209,6 +211,20 @@ export function totp(secretBase32: string, now = Date.now()): string {
   return String(code).padStart(6, '0')
 }
 
+// O servidor recusa um código de uma janela de 30 s igual ou anterior à do último usado
+// (anti-replay), e dois logins do mesmo admin cabem na mesma janela. A última janela
+// usada fica num arquivo (sobrevive ao reinício do worker depois de uma falha); se a
+// atual já foi usada, espera a próxima.
+async function freshTotp(secret: string): Promise<string> {
+  const file = path.join(tmpdir(), `amazonia-e2e-mfa-${createHmac('sha256', 'e2e').update(secret).digest('hex').slice(0, 12)}`)
+  const last = existsSync(file) ? Number(readFileSync(file, 'utf8')) : 0
+  const stepNow = () => Math.floor(Date.now() / 30_000)
+  while (stepNow() <= last) await new Promise((r) => setTimeout(r, 1000))
+  const now = Date.now()
+  writeFileSync(file, String(Math.floor(now / 30_000)))
+  return totp(secret, now)
+}
+
 // Promove a conta e faz o login de admin completo (senha → código TOTP) no
 // contexto `api`. O /admin só aceita sessões que passaram pelo MFA, então a
 // sessão aberta no cadastro não serve. Devolve o novo snapshot da sessão.
@@ -225,7 +241,7 @@ export async function loginAsAdmin(api: APIRequestContext, account: TestAccount)
   const login = await authPost(api, '/auth/login', { email, password }, 'login de admin', false)
   const body = await login.json()
   if (!body.mfaRequired) throw new Error(`login de admin sem desafio MFA (${login.status()}): ${JSON.stringify(body)}`)
-  const verify = await authPost(api, '/auth/mfa/verify', { mfaToken: body.mfaToken, code: totp(secret) }, 'MFA do admin', false)
+  const verify = await authPost(api, '/auth/mfa/verify', { mfaToken: body.mfaToken, code: await freshTotp(secret) }, 'MFA do admin', false)
   if (!verify.ok()) throw new Error(`código do MFA recusado (${verify.status()}): ${await verify.text()}`)
   return api.storageState()
 }
