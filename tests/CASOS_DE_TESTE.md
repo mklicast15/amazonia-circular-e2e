@@ -212,7 +212,7 @@ seguintes não rodam.
 | TC-PLN-05 | Admin ativa o Raiz pelo detalhe da empresa | Empresa vê Raiz, "Assinatura do Raiz válida até…", selo Parceiro e 5 de 20 anúncios |
 | TC-PLN-06 | Empresa grátis envia um anúncio mais novo que o do parceiro | Na fila de moderação, o anúncio do parceiro (com selo) vem antes |
 | TC-PLN-07 | Comprador abre um anúncio publicado do parceiro | Selo Parceiro no painel do vendedor |
-| TC-PLN-08 | Admin cria teste grátis do Floresta para a outra empresa (empresas escolhidas) | Promoção ativa; empresa vê "Teste grátis do Floresta até…"; em /planos o card Floresta diz "Em teste grátis" e oferece "Quero o Floresta" |
+| TC-PLN-08 | Admin cria teste grátis do Floresta para a outra empresa (empresas escolhidas) | Promoção ativa; empresa vê "Teste grátis do Floresta até…"; em /planos o card Floresta diz "Em teste grátis" e mostra o botão "Quero o Floresta" (sem ação por enquanto) |
 | TC-PLN-09 | Admin encerra e revoga a promoção | Detalhe mostra "revogado em" e "Encerrada"; empresa volta ao Semente |
 | TC-PLN-10 | Empresa no Raiz com 6 publicados volta ao Semente | O anúncio mais recente fica pausado, os 5 mais antigos seguem publicados, painel mostra 5 de 5; auditoria registra "Plano rebaixado" pelo "Sistema" |
 

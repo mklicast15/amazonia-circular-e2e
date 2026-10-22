@@ -162,7 +162,7 @@ test.describe.serial('Planos pagos', () => {
     await gotoReady(other.page, '/planos')
     const floresta = other.page.locator('.plan-card', { hasText: 'Floresta' })
     await expect(floresta.locator('.plan-card-ribbon')).toHaveText('Em teste grátis')
-    await expect(floresta.getByRole('link', { name: 'Quero o Floresta' })).toBeVisible()
+    await expect(floresta.getByRole('button', { name: 'Quero o Floresta' })).toBeVisible()
   })
 
   test('TC-PLN-09: encerrar e revogar a promoção devolve a empresa ao Semente', async () => {
