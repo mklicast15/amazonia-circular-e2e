@@ -272,7 +272,7 @@ de e-mail é marcada direto no banco (o ambiente de teste não envia e-mail).
 |---|---|---|
 | TC-PUBL-01 | Abre /sobre, /solucoes, /materiais, /blog, /contato, /privacidade, /planos | Título certo; nenhum erro de JavaScript (o 401 do visitante no /auth/me não conta) |
 | TC-PUBL-02 | Abre uma rota que não existe | "Página não encontrada" |
-| TC-PUBL-03 | Usa o menu do topo | Sobre nós, Planos e Contato levam às páginas certas |
+| TC-PUBL-03 | Usa o menu do topo | Sobre nós e Contato levam às páginas certas; Planos não está no menu, e "Conheça nossos planos" (página inicial) abre /planos |
 | TC-PUBL-04 | Abre /contato | Link mailto para o e-mail da equipe |
 
 Também no painel: **TC-PAI-04** (`painel/editar-anuncio.spec.ts`) — editar um anúncio publicado
