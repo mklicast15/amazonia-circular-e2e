@@ -1,9 +1,10 @@
-import { expect, gotoReady, test } from '../support/fixtures'
+import { expect, gotoReady, test, waitForTurnstile } from '../support/fixtures'
 
 test.describe('Recuperação de senha', () => {
   test('TC-REC-01: solicitar o link mostra a mensagem genérica de confirmação', async ({ page, account }) => {
     await gotoReady(page, '/recuperar-senha')
     await page.locator('#rec-email').fill(account.email)
+    await waitForTurnstile(page)
     await page.getByRole('button', { name: 'Enviar link' }).click()
 
     await expect(page.getByText('Se existir uma conta com esse e-mail, enviamos um link')).toBeVisible()
@@ -12,6 +13,7 @@ test.describe('Recuperação de senha', () => {
 
   test('TC-REC-02: bloqueia o envio sem informar e-mail', async ({ page }) => {
     await gotoReady(page, '/recuperar-senha')
+    await waitForTurnstile(page)
     await page.getByRole('button', { name: 'Enviar link' }).click()
 
     await expect(page.locator('.field-error')).toBeVisible()

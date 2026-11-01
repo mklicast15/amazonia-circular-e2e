@@ -54,8 +54,8 @@ export function uniqueStamp(): string {
 // cada 15 min (authLimiter), e a suíte registra dezenas de contas. Localmente
 // não há proxy na frente da API e ela roda com `trust proxy 1`, então o IP
 // do cliente vem do X-Forwarded-For — cada teste/ator usa um IP falso
-// próprio para não esbarrar no limite. Em produção (atrás do proxy do Render)
-// isso não tem efeito, porque o proxy acrescenta o IP real no fim do header.
+// próprio para não esbarrar no limite. No staging/produção (Azure Container Apps) isso não
+// tem efeito: a entrada do Azure acrescenta o IP real no fim do header e a API recusa a lista.
 export function fakeClientIp(): string {
   const n = () => Math.floor(Math.random() * 254) + 1
   return `10.${n()}.${n()}.${n()}`
@@ -81,11 +81,19 @@ export function buildAccount(overrides: Partial<TestAccount> = {}): TestAccount 
   }
 }
 
+// Token do Turnstile enviado nas chamadas diretas à API. O staging usa a chave secreta de
+// teste da Cloudflare, que aceita este token público de teste; localmente, sem chave, a API
+// ignora o campo. Contra produção (chave real) as chamadas diretas não passam, de propósito.
+export const TURNSTILE_TOKEN = process.env.E2E_TURNSTILE_TOKEN ?? 'XXXX.DUMMY.TOKEN.XXXX'
+
 // POST numa rota de autenticação (login, cadastro, MFA): respeita o limite de login da
 // API (ver authBudget.ts) e, num 429, espera a janela zerar e tenta de novo uma vez.
 // `reserve: false` quando quem chama já reservou o saldo (ex.: login + MFA juntos).
 export async function authPost(api: APIRequestContext, path: string, data: unknown, label = path, reserve = true): Promise<APIResponse> {
   if (reserve) await reserveAuth(1, label)
+  if (data && typeof data === 'object' && /^\/auth\/(login|register|forgot-password|reset-password)$/.test(path)) {
+    data = { turnstileToken: TURNSTILE_TOKEN, ...data }
+  }
   let res = await api.post(`${API_URL}${path}`, { data })
   if (await waitForRateLimit(res)) res = await api.post(`${API_URL}${path}`, { data })
   await noteAuthResponse(res)

@@ -148,6 +148,15 @@ export async function acceptCookieConsent(context: BrowserContext, baseURL: stri
   await context.addCookies([{ name: 'ac_cookie_consent', value: '1', url: baseURL }])
 }
 
+// Com o Turnstile ligado (staging/produção), o formulário só é aceito depois que o widget
+// devolve o token — o widget de teste da Cloudflare leva ~1 s. Enviar antes mostra "Confirme
+// que você não é um robô". Sem site key (local) não há widget e não há o que esperar.
+export async function waitForTurnstile(page: Page): Promise<void> {
+  const widget = page.locator('.turnstile-widget')
+  if ((await widget.count()) === 0) return
+  await expect(widget.locator('input[name="cf-turnstile-response"]')).not.toHaveValue('', { timeout: 20_000 })
+}
+
 // O SSR de dev do TanStack Start às vezes sofre um hydration mismatch logo
 // após o load (uma tag <style> difere entre servidor e cliente), o que faz o
 // React descartar e remontar a árvore no cliente — qualquer campo preenchido
