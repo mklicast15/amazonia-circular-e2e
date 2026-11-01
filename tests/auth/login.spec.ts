@@ -1,11 +1,12 @@
 import type { Page } from '@playwright/test'
 import { API_URL, REMOTE } from '../support/env'
 import { reserveAuth } from '../support/authBudget'
-import { acceptCookieConsent, expect, gotoReady, test } from '../support/fixtures'
+import { acceptCookieConsent, expect, gotoReady, test, waitForTurnstile } from '../support/fixtures'
 
 async function attemptLogin(page: Page, email: string, password: string) {
   await page.locator('#login-email').fill(email)
   await page.locator('#login-password').fill(password)
+  await waitForTurnstile(page)
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 }
 
@@ -50,6 +51,7 @@ test.describe('Login', () => {
 
   test('TC-LOG-04: bloqueia o envio com campos vazios', async ({ page }) => {
     await gotoReady(page, '/login')
+    await waitForTurnstile(page)
     await page.getByRole('button', { name: 'Entrar', exact: true }).click()
 
     await expect(page).toHaveURL((url) => url.pathname === '/login')

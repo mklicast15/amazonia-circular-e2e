@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { apiDeleteAccount, randomCnpj, uniqueStamp } from '../support/api'
-import { expect, gotoReady, test } from '../support/fixtures'
+import { expect, gotoReady, test, waitForTurnstile } from '../support/fixtures'
 
 // /cadastro tem dois formulários (convite de equipe e cadastro de empresa),
 // cada um com seu próprio checkbox de consentimento — tudo é buscado dentro
@@ -37,6 +37,7 @@ test.describe('Cadastro de empresa', () => {
       email: `e2e-cad-${stamp}@example.com`,
     })
     await companyForm(page).locator('.consent-label input[type="checkbox"]').check()
+    await waitForTurnstile(page)
     await page.getByRole('button', { name: 'Finalizar Cadastro' }).click()
 
     await expect(page.getByText('Cadastro realizado com sucesso!')).toBeVisible()
@@ -50,6 +51,7 @@ test.describe('Cadastro de empresa', () => {
       email: `e2e-cnpj-${uniqueStamp()}@example.com`,
     })
     await companyForm(page).locator('.consent-label input[type="checkbox"]').check()
+    await waitForTurnstile(page)
     await page.getByRole('button', { name: 'Finalizar Cadastro' }).click()
 
     await expect(page.locator('.field-error', { hasText: 'CNPJ incompleto' })).toBeVisible()
@@ -65,6 +67,7 @@ test.describe('Cadastro de empresa', () => {
       email: `e2e-consent-${stamp}@example.com`,
     })
     // Checkbox de consentimento propositalmente deixado desmarcado.
+    await waitForTurnstile(page)
     await page.getByRole('button', { name: 'Finalizar Cadastro' }).click()
 
     await expect(page.locator('.field-error', { hasText: 'Política de Privacidade' })).toBeVisible()
@@ -80,6 +83,7 @@ test.describe('Cadastro de empresa', () => {
       email: `e2e-cnpj-dv-${stamp}@example.com`,
     })
     await companyForm(page).locator('.consent-label input[type="checkbox"]').check()
+    await waitForTurnstile(page)
     await page.getByRole('button', { name: 'Finalizar Cadastro' }).click()
 
     await expect(page.locator('.field-error', { hasText: 'CNPJ inválido' })).toBeVisible()
